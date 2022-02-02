@@ -2,8 +2,6 @@
 
 verbose_mode="false"
 
-check_root
-
 
 check_root() {
     if [[ "${UID}" -ne 0 ]]; then
@@ -11,17 +9,29 @@ check_root() {
     fi
 }
 
+check_root
 
 
+__change_main_torrc() {
 
+    grep -q -x 'User tor' /etc/tor/torrc || echo 'User tor' >> /etc/tor/torrc
 
+    grep -q -x 'SocksPort 9050 IsolateClientAddr IsolateClientProtocol IsolateDestAddr' /etc/tor/torrc || echo 'SocksPort 9050 IsolateClientAddr IsolateClientProtocol IsolateDestAddr' >> /etc/tor/torrc
+
+    grep -q -x 'DNSPort' /etc/tor/torrc || echo 'DNSPort 53' >> /etc/tor/torrc
+
+    grep -q -x 'TransPort 9040 IsolateClientAddr IsolateClientProtocol IsolateDestAddr' /etc/tor/torrc || echo 'TransPort 9040 IsolateClientAddr IsolateClientProtocol IsolateDestAddr' >> /etc/tor/torrc
+
+    grep -q -x 'ExcludeNodes {es},{us},{ca},{de},{gb},{au},{nz},{dk},{fr},{nl},{no},{be},{it},{sw},{??} StrictNodes 1' /etc/tor/torrc || echo'ExcludeNodes {es},{us},{ca},{de},{gb},{au},{nz},{dk},{fr},{nl},{no},{be},{it},{sw},{??} StrictNodes 1' >> /etc/tor/torrc
+
+}
 
 
 function __main__() {
 
   # Stores the current date.
   readonly _cdate=$(date +%Y%m%d)
-
+  readonly _tor_hashpass="$(tor --hash-password "$(date +%Y%m%d && echo $(( $RANDOM % 100000000 + 1 )))" | tail -1)"
   # Variables related to the log file. Divided into three parts due
   # to the better possibility of manipulation for the user.
   # shellcheck disable=SC2154
@@ -30,48 +40,53 @@ function __main__() {
   readonly _log_file="firevigeo-prepare.${_cdate}.log"
   readonly _log_stdout="${_log_directory}/firevigeo-prepare.stdout.log"
   readonly _log_path="${_log_directory}/${_log_file}"
+  readonly _torrc_config=/etc/tor/torrc
 
   for number in {9000..9010}
     do
     echo "Tor socks: $number "
-    sudo -u tor tor -f "${_torrc_config}" \
-       --RunAsDaemon 1 \
+    tor --RunAsDaemon 1 \
+       --allow-missing-torrc \
+       --ignore-missing-torrc \
        --CookieAuthentication 0 \
-       --SocksPort "$number" \
-       --ControlPort "`expr $number + 800`" \
-       --PidFile "${_proc_dir}/${_arg_socks}.pid" \
-       --DataDirectory "${_proc_dir}" \
+       --SocksPort $number \
+       --ControlPort `expr $number + 800` \
+       --PidFile "/var/run/tor.$number.pid" \
        --SocksBindAddress 127.0.0.1 \
        --NewCircuitPeriod 15 \
        --MaxCircuitDirtiness 15 \
-       --NumEntryGuards 8 \
        --CircuitBuildTimeout 5 \
        --ExitRelay 0 \
        --RefuseUnknownExits 0 \
        --ClientOnly 1 \
+       --User tor \
+       --Sandbox 1 \
        --StrictNodes 1 \
+       --HashedControlPassword $_tor_hashpass \
        --AllowSingleHopCircuits 1 \
        >>"$_log_stdout" 2>&1 ; _kstate="$?"
 
+        if [[ $_kstate -ne 0 ]]; then
+	    echo Done!
+            continue
+	else
+	   echo Failed!
+	   exit
+        fi
 
   done
 
+echo "Hashed password is: $_tor_hashpass"
+
+#        "value is less or equal 1023"
 
 
-        _sprintf "stop" "value is less then or equal 1023"
-
-        _logger "stop" \
-          "${_FUNCTION_ID}()" \
-          "value is less or equal 1023"
-
-      elif [[ "$socks_port_state" -eq 1 && "$socks_port_number" -ge 65536 ]] ; then
-
-        _sprintf "stop" "value is equal or grather then 65536"
+#        _sprintf "stop" "value is equal or grather then 65536"
 
 }
 
 
-
+own_params() {
 
   eval set -- "$_GETOPT_PARAMS"
   while true ; do
@@ -181,3 +196,7 @@ function __main__() {
     esac
 
   done
+}
+
+
+__main__
