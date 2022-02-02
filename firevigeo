@@ -178,9 +178,11 @@ check_ip() {
 
     local url_list=(
         'http://ip-api.com/'
-        'https://ipleak.net/json/'
-        'https://ipinfo.io/'
-        'https://api.myip.com/'
+https://ipinfo.io/widget'  -H 'Referer: https://ipinfo.io/'  -H 'Cookie: flash='
+'https://myip.privex.io/index.json'
+https://address.computer/index.json
+ https://myip.vc/index.json
+
     )
 
     for url in "${url_list[@]}"; do
