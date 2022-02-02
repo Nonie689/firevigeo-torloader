@@ -178,12 +178,10 @@ check_ip() {
 
     local url_list=(
         'http://ip-api.com/'
-https://ipinfo.io/widget'  -H 'Referer: https://ipinfo.io/'  -H 'Cookie: flash='
-'https://myip.privex.io/index.json'
-https://address.computer/index.json
- https://myip.vc/index.json
-
-    )
+	'https://ipinfo.io/widget  -H "Referer: https://ipinfo.io/"  -H "Cookie: flash="'
+	'https://myip.privex.io/index.json'
+	'https://address.computer/index.json'
+	'https://myip.vc/index.json')
 
     for url in "${url_list[@]}"; do
         local request="$(curl -s "$url")"
@@ -196,4 +194,14 @@ https://address.computer/index.json
         printf "%s\\n" "${request}"
         break
     done
+}
+
+
+check_cia_isp() {
+curl -s 'http://ip-api.com/' && curl -s 'http://ip-api.com/' | grep isp | awk '{for(i=3;i<=NF-1;i++) printf $i" "; print ""}'|grep CIA && change_ip || \
+curl -s 'https://ipinfo.io/widget' && curl -s 'https://ipinfo.io/widget'  -H "Referer: https://ipinfo.io/"  -H "Cookie: flash=" | jq .asn | jq .name |grep CIA && change_ip || \
+curl -s 'https://myip.privex.io/index.json' && curl -s 'https://myip.privex.io/index.json' | jq .geo | jq .as_name |grep CIA && change_ip || \
+curl -s 'https://address.computer/index.json' && curl -s 'https://address.computer/index.json' | jq .geo | jq .as_name |grep CIA && change_ip || \
+curl -s 'https://myip.vc/index.json' && curl -s 'https://myip.vc/index.json' | jq .geo | jq .as_name |grep CIA && change_ip || \
+	info "\n${green}  [Info] @@@ ${yellow}All test without result no CIA ISP found!"
 }
