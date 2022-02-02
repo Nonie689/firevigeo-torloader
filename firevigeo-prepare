@@ -22,7 +22,15 @@ __change_main_torrc() {
 
     grep -q -x 'TransPort 9040 IsolateClientAddr IsolateClientProtocol IsolateDestAddr' /etc/tor/torrc || echo 'TransPort 9040 IsolateClientAddr IsolateClientProtocol IsolateDestAddr' >> /etc/tor/torrc
 
-    grep -q -x 'ExcludeNodes {es},{us},{ca},{de},{gb},{au},{nz},{dk},{fr},{nl},{no},{be},{it},{sw},{??} StrictNodes 1' /etc/tor/torrc || echo'ExcludeNodes {es},{us},{ca},{de},{gb},{au},{nz},{dk},{fr},{nl},{no},{be},{it},{sw},{??} StrictNodes 1' >> /etc/tor/torrc
+    grep -q -x 'ExcludeNodes {es},{us},{ca},{de},{gb},{au},{nz},{dk},{fr},{nl},{no},{be},{it},{sw},{??} StrictNodes 1' /etc/tor/torrc || echo 'ExcludeNodes {es},{us},{ca},{de},{gb},{au},{nz},{dk},{fr},{nl},{no},{be},{it},{sw},{??} StrictNodes 1' >> /etc/tor/torrc
+
+    grep -q -x 'ControlPort 8040' /etc/tor/torrc || echo 'ControlPort 8040' >> /etc/tor/torrc
+
+    grep -q -x 'Sandbox 1' /etc/tor/torrc || echo 'Sandbox 1' >> /etc/tor/torrc
+
+    grep -q -x 'ClientUseIPv4' /etc/tor/torrc || echo 'ClientUseIPv4' >> /etc/tor/torrc
+
+    grep -q -x 'NewCircuitPeriod 5' /etc/tor/torrc || echo 'NewCircuitPeriod 5' >> /etc/tor/torrc
 
 }
 
@@ -45,26 +53,14 @@ function __main__() {
   for number in {9000..9010}
     do
     echo "Tor socks: $number "
-    tor --RunAsDaemon 1 \
-       --allow-missing-torrc \
-       --ignore-missing-torrc \
-       --CookieAuthentication 0 \
-       --SocksPort $number \
-       --ControlPort `expr $number + 800` \
-       --PidFile "/var/run/tor.$number.pid" \
-       --SocksBindAddress 127.0.0.1 \
-       --NewCircuitPeriod 15 \
-       --MaxCircuitDirtiness 15 \
-       --CircuitBuildTimeout 5 \
-       --ExitRelay 0 \
-       --RefuseUnknownExits 0 \
-       --ClientOnly 1 \
-       --User tor \
-       --Sandbox 1 \
-       --StrictNodes 1 \
-       --HashedControlPassword $_tor_hashpass \
-       --AllowSingleHopCircuits 1 \
-       >>"$_log_stdout" 2>&1 ; _kstate="$?"
+    cp /etc/tor/torrc /etc/tor/torrc.$number
+
+    sed -i 's/SocksPort 9050/SocksPort $number/g' torrc.$number
+    sed -i 's/TransPort 9040/TransPort `expr $number + 800`/g' torrc.$number
+    sed -i 's/SocksPort 9050/ControlPort `expr $number + 1000`/g' torrc.$number
+
+    echo "HashedControlPassword $_tor_hashpass" >> torrc.$number
+
 
         if [[ $_kstate -ne 0 ]]; then
 	    echo Done!
@@ -200,3 +196,4 @@ own_params() {
 
 
 __main__
+__change_main_torrc
