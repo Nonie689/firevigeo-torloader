@@ -1,0 +1,183 @@
+#!/bin/bash
+
+verbose_mode="false"
+
+check_root
+
+
+check_root() {
+    if [[ "${UID}" -ne 0 ]]; then
+        die "Please run this program as a root!"
+    fi
+}
+
+
+
+
+
+
+
+function __main__() {
+
+  # Stores the current date.
+  readonly _cdate=$(date +%Y%m%d)
+
+  # Variables related to the log file. Divided into three parts due
+  # to the better possibility of manipulation for the user.
+  # shellcheck disable=SC2154
+  readonly _log_directory="/var/log"
+  # shellcheck disable=SC2154
+  readonly _log_file="firevigeo-prepare.${_cdate}.log"
+  readonly _log_stdout="${_log_directory}/firevigeo-prepare.stdout.log"
+  readonly _log_path="${_log_directory}/${_log_file}"
+
+  for number in {9000..9010}
+    do
+    echo "Tor socks: $number "
+    sudo -u tor tor -f "${_torrc_config}" \
+       --RunAsDaemon 1 \
+       --CookieAuthentication 0 \
+       --SocksPort "$number" \
+       --ControlPort "`expr $number + 800`" \
+       --PidFile "${_proc_dir}/${_arg_socks}.pid" \
+       --DataDirectory "${_proc_dir}" \
+       --SocksBindAddress 127.0.0.1 \
+       --NewCircuitPeriod 15 \
+       --MaxCircuitDirtiness 15 \
+       --NumEntryGuards 8 \
+       --CircuitBuildTimeout 5 \
+       --ExitRelay 0 \
+       --RefuseUnknownExits 0 \
+       --ClientOnly 1 \
+       --StrictNodes 1 \
+       --AllowSingleHopCircuits 1 \
+       >>"$_log_stdout" 2>&1 ; _kstate="$?"
+
+
+  done
+
+
+
+        _sprintf "stop" "value is less then or equal 1023"
+
+        _logger "stop" \
+          "${_FUNCTION_ID}()" \
+          "value is less or equal 1023"
+
+      elif [[ "$socks_port_state" -eq 1 && "$socks_port_number" -ge 65536 ]] ; then
+
+        _sprintf "stop" "value is equal or grather then 65536"
+
+}
+
+
+
+
+  eval set -- "$_GETOPT_PARAMS"
+  while true ; do
+
+    case $1 in
+
+      --help)
+
+        _help_
+
+        shift ; _exit_ "0" ;;
+
+      --debug)
+
+        export stdout_mode="debug"
+
+        shift ;;
+
+      --verbose)
+
+        export verbose_mode="true"
+
+        shift ;;
+
+      -i|--init)
+
+        export init_state="1"
+
+        export init_number="${2}"
+
+        shift 2 ;;
+
+      -k|--kill)
+
+        export kill_state="1"
+
+        export kill_status="0"
+
+        shift ;;
+
+      -s|--show-id)
+
+        export show_id_state="1"
+
+        shift ;;
+
+      -n|--new-id)
+
+
+        export new_id_state="1"
+
+        shift ;;
+
+      -u|--user)
+
+        export user_state="1"
+
+        export user_name="${2}"
+
+        shift 2 ;;
+
+      --socks-port)
+
+        export socks_port_state=1
+
+        export socks_port_number="${2}"
+
+        shift 2 ;;
+
+      --control-port)
+
+        export control_port_state=1
+
+        export control_port_number="${2}"
+
+        shift 2 ;;
+
+      --proxy)
+
+        export proxy_state=1
+
+        export proxy_type="${2}"
+
+        shift 2 ;;
+
+      --haproxy)
+
+        export frontend_state=1
+
+        export frontend_type="haproxy"
+
+        shift 2 ;;
+
+      *)
+
+        if [[ "$2" == "-" ]] || [[ ! -z "$2" ]] ; then
+
+          printf "%s: invalid option -- '%s'\\n" "$_init_name" "$2"
+          _exit_ "1"
+
+
+        # elif [[ -z "$2" ]] ; then break ; fi
+        else break ; fi
+
+        ;;
+
+    esac
+
+  done
