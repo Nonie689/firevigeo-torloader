@@ -28,6 +28,12 @@ function __main__() {
   readonly _log_path="${_log_directory}/${_log_file}"
   readonly _torrc_config=/etc/tor/torrc
 
+if ! test -e data/config/haproxy-backup.cfg ; then
+  cp /etc/haproxy/haproxy.cfg data/config/haproxy-backup.cfg 
+fi
+
+cp data/config/haproxy-custom.cfg /etc/haproxy/haproxy.cfg
+
 dnsport=52
 privoxyport=8029
   for number in {9050..9059}
@@ -102,10 +108,21 @@ privoxyport=8029
 
      privoxy --user privoxy /etc/privoxy/config.$number
 
+     echo "server  app1 127.0.0.1:$privoxyport check" >> /etc/haproxy/haproxy.cfg
 
   done
 
-echo "Hashed password is: $_tor_hashpass"
+  if ! test -e data/config/polipo-backup.cfg ; then
+     cp /etc/polipo/config.sample data/config/polipo-backup.cfg 
+  fi
+
+  cp data/config/polipo-custom.cfg /etc/polipo/config.sample 
+
+  systemctl start polipo
+  cp data/config/iptables.custom.cfg  /etc/iptables/iptables.rules
+  systemctl restart iptables
+
+  echo "Tor ControlPort hashed password is: $_tor_hashpass"
 
 #        "value is less or equal 1023"
 
