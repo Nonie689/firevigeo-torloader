@@ -57,10 +57,13 @@ function __main__() {
 
     sed -i 's/SocksPort 9050/SocksPort $number/g' torrc.$number
     sed -i 's/TransPort 9040/TransPort `expr $number + 800`/g' torrc.$number
-    sed -i 's/SocksPort 9050/ControlPort `expr $number + 1000`/g' torrc.$number
+    sed -i 's/ControlPort 9050/ControlPort `expr $number + 1000`/g' torrc.$number
+
+    ln -s data/config/tor@.service /usr/lib/systemd/system/tor@$number.service
 
     echo "HashedControlPassword $_tor_hashpass" >> torrc.$number
 
+    systemctl start tor@$number.service
 
         if [[ $_kstate -ne 0 ]]; then
 	    echo Done!
