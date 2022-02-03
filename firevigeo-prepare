@@ -33,6 +33,7 @@ if ! test -e data/config/haproxy-backup.cfg ; then
 fi
 
 cp data/config/haproxy-custom.cfg /etc/haproxy/haproxy.cfg
+systemctl start haproxy
 
 dnsport=52
 privoxyport=8029
@@ -108,7 +109,7 @@ privoxyport=8029
 
      privoxy --user privoxy /etc/privoxy/config.$number
 
-     echo "server  app1 127.0.0.1:$privoxyport check" >> /etc/haproxy/haproxy.cfg
+     echo "server  privoxy-process-$privoxyport 127.0.0.1:$privoxyport check fall 3 rise 2" >> /etc/haproxy/haproxy.cfg
 
   done
 
@@ -118,7 +119,7 @@ privoxyport=8029
 
   cp data/config/polipo-custom.cfg /etc/polipo/config.sample 
 
-  systemctl start polipo
+  systemctl restart polipo
   cp data/config/iptables.custom.cfg  /etc/iptables/iptables.rules
   systemctl restart iptables
 
