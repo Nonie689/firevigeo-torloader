@@ -12,32 +12,6 @@ check_root() {
 check_root
 
 
-__change_main_torrc() {
-
-    rm /etc/tor/torrc
-
-    grep -q -x 'DataDirectory /var/lib/to' /etc/tor/torrc || echo 'DataDirectory /var/lib/tor' >> /etc/tor/torrc
-
-#    grep -q -x 'User tor' /etc/tor/torrc || echo 'User tor' >> /etc/tor/torrc
-
-#    grep -q -x 'SocksPort 9050 IsolateClientAddr IsolateClientProtocol IsolateDestAddr' /etc/tor/torrc || echo 'SocksPort 9050 IsolateClientAddr IsolateClientProtocol IsolateDestAddr' >> /etc/tor/torrc
-
-    grep -q -x 'DNSPort' /etc/tor/torrc || echo 'DNSPort 53' >> /etc/tor/torrc
-
-#    grep -q -x 'TransPort 9040 IsolateClientAddr IsolateClientProtocol IsolateDestAddr' /etc/tor/torrc || echo 'TransPort 9040 IsolateClientAddr IsolateClientProtocol IsolateDestAddr' >> /etc/tor/torrc
-
-    grep -q -x 'ExcludeNodes {es},{us},{ca},{de},{gb},{au},{nz},{dk},{fr},{nl},{no},{be},{it},{sw},{??} StrictNodes 1' /etc/tor/torrc || echo 'ExcludeNodes {es},{us},{ca},{de},{gb},{au},{nz},{dk},{fr},{nl},{no},{be},{it},{sw},{??} StrictNodes 1' >> /etc/tor/torrc
-
-#    grep -q -x 'ControlPort 8040' /etc/tor/torrc || echo 'ControlPort 8040' >> /etc/tor/torrc
-
-    grep -q -x 'Sandbox 1' /etc/tor/torrc || echo 'Sandbox 1' >> /etc/tor/torrc
-
-    grep -q -x 'ClientUseIPv4' /etc/tor/torrc || echo 'ClientUseIPv4' >> /etc/tor/torrc
-
-    grep -q -x 'NewCircuitPeriod 5' /etc/tor/torrc || echo 'NewCircuitPeriod 5' >> /etc/tor/torrc
-
-}
-
 
 function __main__() {
 
@@ -54,38 +28,46 @@ function __main__() {
   readonly _log_path="${_log_directory}/${_log_file}"
   readonly _torrc_config=/etc/tor/torrc
 
-  if test -e /usr/lib/systemd/system/tor@.service ; then
-    cp data/config/tor@.service /usr/lib/systemd/system/tor@.service
-  fi
+COUNTER=0
 
-  for number in {9001..9011}
+  for number in {9050..9059}
     do
+    let dnsport=COUNTER+53
     cp data/config/tor@.service /usr/lib/systemd/system/tor@$number.service
-    newtransport=$(expr $number + 800)
-    newcontrolport=$(expr $number + 1000)
+    newtransport=$(expr $number - 10)
+    newcontrolport=$(expr $number + 1150)
+
     echo "Tor socks: $number "
-    cp /etc/tor/torrc /etc/tor/torrc.$number
 
-#    sed -i 's|SocksPort 9050|SocksPort ${number}|g' /etc/tor/torrc.$number
-#    sed -i 's|TransPort 9040|TransPort ${newtranssocks}|g' /etc/tor/torrc.$number
-#    sed -i 's|ControlPort 8040|ControlPort ${newcontrolport}|g' /etc/tor/torrc.$number
-
-    echo "SocksPort $number IsolateClientAddr IsolateClientProtocol IsolateDestAddr" >> /etc/tor/torrc.$number
-    echo "TransPort $newtransport IsolateClientAddr IsolateClientProtocol IsolateDestAddr" >> /etc/tor/torrc.$number
+    echo "ExcludeNodes {es},{us},{ca},{de},{gb},{au},{nz},{dk},{fr},{nl},{no},{be},{it},{sw},{??} StrictNodes 1" > /etc/tor/torrc.$number
+    echo "Sandbox 1" >> /etc/tor/torrc.$number
+    echo "NewCircuitPeriod 5" >> /etc/tor/torrc.$number
+    echo "DataDirectory /var/lib/tor" >> /etc/tor/torrc.$number
+    echo "SocksPort $number" >> /etc/tor/torrc.$number
+# IsolateClientAddr IsolateClientProtocol IsolateDestAddr" >> /etc/tor/torrc.$number
+    echo "TransPort $newtransport" >> /etc/tor/torrc.$number
+# IsolateClientAddr IsolateClientProtocol IsolateDestAddr" >> /etc/tor/torrc.$number
     echo "ControlPort $newcontrolport" >> /etc/tor/torrc.$number
     echo "HashedControlPassword $_tor_hashpass" >> /etc/tor/torrc.$number
+    echo "DNSPort $dnsport" >> /etc/tor/torrc.$number
+    echo "User tor" >> /etc/tor/torrc.$number
+
+    let COUNTER=COUNTER+1
 
     sudo systemctl enable tor@$number.service > /dev/nul
 
     if ! systemctl status tor@$number.service > /dev/nul; then
       if sudo systemctl start tor@$number.service > /dev/nul; then
         echo Tor service startet and be ready!
+	echo
       else
         echo Tor service failed to start!
+	echo
 #	exit
       fi
     else
       echo Tor service already started!
+      echo
     fi
 
   done
@@ -212,6 +194,5 @@ own_params() {
   done
 }
 
-__change_main_torrc
 
 __main__
