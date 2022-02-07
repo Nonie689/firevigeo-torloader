@@ -56,6 +56,7 @@ dnsport=53
 ip_addr=10
   for number in {9050..9059}
     do
+    mkdir /var/lib/tor.$number
     cp data/config/tor@.service /usr/lib/systemd/system/tor@$number.service
     newcontrolport=$(expr $number + 1100)
 
@@ -65,7 +66,8 @@ ip_addr=10
     echo "User tor" >> /etc/tor/torrc.$number
     echo "Sandbox 1" >> /etc/tor/torrc.$number
     echo "NewCircuitPeriod 5" >> /etc/tor/torrc.$number
-    echo "DataDirectory /var/lib/tor" >> /etc/tor/torrc.$number
+    
+    echo "DataDirectory /var/lib/tor.$number" >> /etc/tor/torrc.$number
     echo "SocksPort 10.0.0.$ip_addr:$number" IsolateClientAddr IsolateClientProtocol IsolateDestAddr >> /etc/tor/torrc.$number
     ip_addr_list="$ip_addr_list 10.0.0.$ip_addr:$number"
     echo "ControlPort $newcontrolport" >> /etc/tor/torrc.$number
