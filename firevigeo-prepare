@@ -37,6 +37,7 @@ function __main__() {
 #  __init__
 
   modprobe dummy
+  cp data/config/tor@.service  /usr/lib/systemd/system/tor@.service
   # Stores the current date.
   readonly _cdate=$(date +%Y%m%d)
   readonly _tor_hashpass="$(tor --hash-password "$(date +%Y%m%d && echo $(( $RANDOM % 100000000 + 1 )))" | tail -1)"
@@ -56,13 +57,12 @@ dnsport=53
 ip_addr=10
   for number in {9050..9059}
     do
-    mkdir /var/lib/tor.$number
     cp data/config/tor@.service /usr/lib/systemd/system/tor@$number.service
     newcontrolport=$(expr $number + 1100)
 
     echo "Tor socks: $number "
 
-    echo "ExcludeNodes {es},{us},{ca},{de},{gb},{au},{nz},{dk},{fr},{nl},{no},{be},{it},{sw},{??} StrictNodes 1" > /etc/tor/torrc.$number
+    echo "ExcludeNodes {es},{us},{ca},{de},{gb},{au},{nz},{dk},{fr},{nl},{no},{be},{it},{se},{??} StrictNodes 1" > /etc/tor/torrc.$number
     echo "User tor" >> /etc/tor/torrc.$number
     echo "Sandbox 1" >> /etc/tor/torrc.$number
     echo "NewCircuitPeriod 5" >> /etc/tor/torrc.$number
@@ -87,20 +87,10 @@ ip_addr=10
 
     let counter=counter+1
     let ip_addr=ip_addr+1
-    sudo systemctl enable tor@$number.service > /dev/nul
-
-    if ! systemctl status tor@$number.service > /dev/nul; then
-      if sudo systemctl start tor@$number.service > /dev/nul; then
-        echo Tor service startet and be ready!
-	echo
-      else
-        echo Tor service failed to start!
-	echo
-#	exit
-      fi
+    if systemctl enable --now tor@$number.service > /dev/null 2>&1 ; then
+      echo "Tor enabled and started!"
     else
-      echo Tor service already started!
-      echo
+      echo "Failed to enable and start Tor!"
     fi
 
   done
