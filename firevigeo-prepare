@@ -38,6 +38,7 @@ function __main__() {
 
   modprobe dummy
   cp data/config/tor@.service  /usr/lib/systemd/system/tor@.service
+  echo nameserver 127.0.0.1 > /etc/resolv.conf
   # Stores the current date.
   readonly _cdate=$(date +%Y%m%d)
   readonly _tor_hashpass="$(tor --hash-password "$(date +%Y%m%d && echo $(( $RANDOM % 100000000 + 1 )))" | tail -1)"
