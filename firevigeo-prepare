@@ -11,9 +11,30 @@ check_root() {
 
 check_root
 
+__init__ () {
+
+
+if ! which tor; then
+  echo "Found not tor! - Exit"
+  exit
+fi
+
+if ! which redsocks; then
+  echo "Found not redsocks!" - Exit!
+  exit
+fi
+
+#if ! setcap cap_net_raw=eip ${which go-dispatch-proxy}; then
+#  echo "Found not go-dispatch-proxy! - Exit"
+#  exit
+#fi
+
+}
+
 
 
 function __main__() {
+  __init__
 
   # Stores the current date.
   readonly _cdate=$(date +%Y%m%d)
@@ -28,9 +49,6 @@ function __main__() {
   readonly _log_path="${_log_directory}/${_log_file}"
   readonly _torrc_config=/etc/tor/torrc
 
-if ! test -e data/config/haproxy-backup.cfg ; then
-  cp /etc/haproxy/haproxy.cfg data/config/haproxy-backup.cfg 
-fi
 
 counter=0
 dnsport=53
