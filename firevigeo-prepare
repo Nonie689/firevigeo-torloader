@@ -81,7 +81,7 @@ ip_addr=10
 
     ip link add eth$counter type dummy
     ip addr add 10.0.0.$ip_addr/24 brd + dev eth$counter label eth$counter:0
-    ip link set dev eth$ip_addr up
+    ip link set dev eth$counter up
 
     let counter=counter+1
     let ip_addr=ip_addr+1
