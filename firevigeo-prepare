@@ -34,8 +34,9 @@ fi
 
 
 function __main__() {
-  __init__
+#  __init__
 
+  modprobe dummy
   # Stores the current date.
   readonly _cdate=$(date +%Y%m%d)
   readonly _tor_hashpass="$(tor --hash-password "$(date +%Y%m%d && echo $(( $RANDOM % 100000000 + 1 )))" | tail -1)"
@@ -56,8 +57,7 @@ ip_addr=10
   for number in {9050..9059}
     do
     cp data/config/tor@.service /usr/lib/systemd/system/tor@$number.service
-    newtransport=$(expr $number - 10)
-    newcontrolport=$(expr $number + 1150)
+    newcontrolport=$(expr $number + 1100)
 
     echo "Tor socks: $number "
 
@@ -67,18 +67,23 @@ ip_addr=10
     echo "NewCircuitPeriod 5" >> /etc/tor/torrc.$number
     echo "DataDirectory /var/lib/tor" >> /etc/tor/torrc.$number
     echo "SocksPort 10.0.0.$ip_addr:$number" IsolateClientAddr IsolateClientProtocol IsolateDestAddr >> /etc/tor/torrc.$number
-    ip_addr_list=$ip_addr_list $ip_addr
+    ip_addr_list="$ip_addr_list 10.0.0.$ip_addr:$number"
     echo "ControlPort $newcontrolport" >> /etc/tor/torrc.$number
     echo "HashedControlPassword $_tor_hashpass" >> /etc/tor/torrc.$number
-    if $dnsport -eq 53 ; then
+    if test $dnsport -eq 53 ; then
       echo "DNSPort $dnsport" >> /etc/tor/torrc.$number
       let dnsport=dnsport+1
     fi
 
-    brctl addbr Tor$counter
-    ip link set dev Tor$counter up
+    #brctl addbr Tor$counter
+    #ip link set dev Tor$counter up
+    #ip addr add 10.0.0.$ip_addr/24 br 255.255.255.0 dev Tor$counter
+
+    ip link add eth$counter type dummy
+    ip addr add 10.0.0.$ip_addr/24 brd + dev eth$counter label eth$counter:0
+    ip link set dev eth$ip_addr up
+
     let counter=counter+1
-    ip addr add 10.0.0.ip_addr/24 dev Tor$counter
     let ip_addr=ip_addr+1
     sudo systemctl enable tor@$number.service > /dev/nul
 
