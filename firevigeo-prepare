@@ -32,15 +32,11 @@ if ! test -e data/config/haproxy-backup.cfg ; then
   cp /etc/haproxy/haproxy.cfg data/config/haproxy-backup.cfg 
 fi
 
-cp data/config/haproxy-custom.cfg /etc/haproxy/haproxy.cfg
-systemctl start haproxy
-
-dnsport=52
-privoxyport=8029
+counter=0
+dnsport=53
+ip_addr=10
   for number in {9050..9059}
     do
-    let dnsport=dnsport+1
-    let privoxyport=privoxyport+1
     cp data/config/tor@.service /usr/lib/systemd/system/tor@$number.service
     newtransport=$(expr $number - 10)
     newcontrolport=$(expr $number + 1150)
@@ -48,20 +44,24 @@ privoxyport=8029
     echo "Tor socks: $number "
 
     echo "ExcludeNodes {es},{us},{ca},{de},{gb},{au},{nz},{dk},{fr},{nl},{no},{be},{it},{sw},{??} StrictNodes 1" > /etc/tor/torrc.$number
+    echo "User tor" >> /etc/tor/torrc.$number
     echo "Sandbox 1" >> /etc/tor/torrc.$number
     echo "NewCircuitPeriod 5" >> /etc/tor/torrc.$number
     echo "DataDirectory /var/lib/tor" >> /etc/tor/torrc.$number
-    echo "SocksPort $number" >> /etc/tor/torrc.$number
-# IsolateClientAddr IsolateClientProtocol IsolateDestAddr" >> /etc/tor/torrc.$number
-    echo "TransPort $newtransport" >> /etc/tor/torrc.$number
-# IsolateClientAddr IsolateClientProtocol IsolateDestAddr" >> /etc/tor/torrc.$number
+    echo "SocksPort 10.0.0.$ip_addr:$number" IsolateClientAddr IsolateClientProtocol IsolateDestAddr >> /etc/tor/torrc.$number
+    ip_addr_list=$ip_addr_list $ip_addr
     echo "ControlPort $newcontrolport" >> /etc/tor/torrc.$number
     echo "HashedControlPassword $_tor_hashpass" >> /etc/tor/torrc.$number
-    echo "DNSPort $dnsport" >> /etc/tor/torrc.$number
-    echo "User tor" >> /etc/tor/torrc.$number
+    if $dnsport -eq 53 ; then
+      echo "DNSPort $dnsport" >> /etc/tor/torrc.$number
+      let dnsport=dnsport+1
+    fi
 
-    let COUNTER=COUNTER+1
-
+    brctl addbr Tor$counter
+    ip link set dev Tor$counter up
+    let counter=counter+1
+    ip addr add 10.0.0.ip_addr/24 dev Tor$counter
+    let ip_addr=ip_addr+1
     sudo systemctl enable tor@$number.service > /dev/nul
 
     if ! systemctl status tor@$number.service > /dev/nul; then
@@ -78,53 +78,12 @@ privoxyport=8029
       echo
     fi
 
-   echo "user-manual /usr/share/doc/privoxy/user-manual
-
-	confdir /etc/privoxy
-
-	logdir /var/log/multitor/privoxy
-
-	actionsfile match-all.action
-	actionsfile default.action
-	actionsfile user.action
-	filterfile default.filter
-	filterfile user.filter
-
-	toggle 1
-	enable-remote-toggle 0
-	enable-remote-http-toggle 0
-	enable-edit-actions 0
-	enforce-blocks 0
-	buffer-limit 4096
-	forwarded-connect-retries 0
-	accept-intercepted-requests 0
-	allow-cgi-request-crunching 0
-	split-large-forms 0
-
-	# SOCKS parent proxy:
-	listen-address 127.0.0.1:$privoxyport
-	forward-socks5t / 127.0.0.1:$number .
-	forward-socks4a .onion localhost:$number .
-	" > /etc/privoxy/config.$number
-
-     privoxy --user privoxy /etc/privoxy/config.$number
-
-     echo "server  privoxy-process-$privoxyport 127.0.0.1:$privoxyport check fall 3 rise 2" >> /etc/haproxy/haproxy.cfg
-
   done
 
-  if ! test -e data/config/polipo-backup.cfg ; then
-     cp /etc/polipo/config.sample data/config/polipo-backup.cfg 
-  fi
-
-  cp data/config/polipo-custom.cfg /etc/polipo/config.sample 
-
-  systemctl restart polipo
-  cp data/config/iptables.custom.cfg  /etc/iptables/iptables.rules
   systemctl restart iptables
 
   echo "Tor ControlPort hashed password is: $_tor_hashpass"
-
+  echo "Start Load Balancer for: $ip_addr_list"
 #        "value is less or equal 1023"
 
 
