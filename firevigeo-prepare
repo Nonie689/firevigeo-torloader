@@ -5,11 +5,11 @@ verbose_mode="false"
 
 check_root() {
     if [[ "${UID}" -ne 0 ]]; then
-        die "Please run this program as a root!"
+        echo "Please run this program as a root!"
+	exit 121
     fi
 }
 
-check_root
 
 __init__ () {
 
@@ -34,6 +34,7 @@ fi
 
 
 function __main__() {
+  check_root
 #  __init__
 
   modprobe dummy
@@ -41,7 +42,8 @@ function __main__() {
   echo nameserver 127.0.0.1 > /etc/resolv.conf
   # Stores the current date.
   readonly _cdate=$(date +%Y%m%d)
-  readonly _tor_hashpass="$(tor --hash-password "$(date +%Y%m%d && echo $(( $RANDOM % 100000000 + 1 )))" | tail -1)"
+  readonly _tor_pass_readable=$(date +%Y%m%d && echo $(( $RANDOM % 100000000 + 1 )))
+  readonly _tor_hashpass="$(tor --hash-password "${_tor_pass_readable}" | tail -1)"
   # Variables related to the log file. Divided into three parts due
   # to the better possibility of manipulation for the user.
   # shellcheck disable=SC2154
@@ -98,6 +100,7 @@ ip_addr=10
 
   systemctl restart iptables
 
+  echo "Tor ControlPort readable password is: $_tor_pass_readable"
   echo "Tor ControlPort hashed password is: $_tor_hashpass"
   echo "Start Load Balancer for: $ip_addr_list"
 #        "value is less or equal 1023"
@@ -111,6 +114,14 @@ ip_addr=10
 own_params() {
     start=${2:5090}
     end=${3:6000}
+
+    if [[ "$#" -eq 0 ]]; then
+        printf "%s\\n" "${prog_name}: Argument required"
+        printf "%s\\n" "Try '${prog_name} --help' for more information."
+        exit 1
+    fi
+
+    while [[ "$#" -gt 0 ]]; do
 
   while true ; do
 
@@ -173,6 +184,16 @@ own_params() {
     esac
 
     if [ -n $2 && -n $3 ]; then
+	if [ $2 -le 1 || $2 -ge 65535 ]; then
+	  echo "The allowed port range for the start port is 1-65535!"
+	  paramerr=true
+	elif [ $2 -le 1 || $2 -ge 65535 ]; then
+          echo "The allowed port range for the last port is 1-65535!"
+          paramerr=true
+	elif [ ! $paramerr ]; then
+	  exit 2
+	fi
+
 	echo
         echo "The optional argument values are: start port: $num1, last port: $num2."
         start=$2
@@ -181,15 +202,14 @@ own_params() {
     elif [ -n $2 && ! -n $3 || ! -n $2 && -n $3 ]; then
         echo
         echo "The correct optional value is: [start-port] [end-port]"
-        break
+        exit 2
     else
         echo
         echo "There is no optional argument. Use default values: start port: $start, last port: $end"
-	break
     fi
 
   done
 }
 
 
-__main__
+__main__ "${@}"
