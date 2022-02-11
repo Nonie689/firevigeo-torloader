@@ -13,21 +13,27 @@ check_root() {
 
 __init__ () {
 
+paramerr=false
+systemd=true
+
+if ! which hostnamectl || ! hostnamectl; then
+  systemd=false
+fi
 
 if ! which tor; then
   echo "Found not tor! - Exit"
-  exit
+  exit 7
 fi
 
 if ! which redsocks; then
   echo "Found not redsocks!" - Exit!
-  exit
+  exit 7
 fi
 
-#if ! setcap cap_net_raw=eip ${which go-dispatch-proxy}; then
-#  echo "Found not go-dispatch-proxy! - Exit"
-#  exit
-#fi
+if ! setcap cap_net_raw=eip ${which go-dispatch-proxy}; then
+  echo "Found not go-dispatch-proxy! - Exit"
+  exit
+fi
 
 }
 
@@ -58,27 +64,30 @@ function __main__() {
 counter=0
 dnsport=53
 ip_addr=10
+
+  if [ $systemd ]; then
+    cp data/config/tor@.service /usr/lib/systemd/system/tor.service
+  fi
+
   for number in {9050..9059}
     do
-    cp data/config/tor@.service /usr/lib/systemd/system/tor@$number.service
     newcontrolport=$(expr $number + 1100)
 
     echo "Tor socks: $number "
 
-    echo "ExcludeNodes {es},{us},{ca},{de},{gb},{au},{nz},{dk},{fr},{nl},{no},{be},{it},{se},{??} StrictNodes 1" > /etc/tor/torrc.$number
-    echo "User tor" >> /etc/tor/torrc.$number
-    echo "Sandbox 1" >> /etc/tor/torrc.$number
-    echo "NewCircuitPeriod 5" >> /etc/tor/torrc.$number
+    echo "ExcludeNodes {es},{us},{ca},{de},{gb},{au},{nz},{dk},{fr},{nl},{no},{be},{it},{se},{??} StrictNodes 1" > $_torrc_config.$number
+    echo "User tor" >> $_torrc_config.$number
+    echo "Sandbox 1" >> $_torrc_config.$number
+    echo "NewCircuitPeriod 5" >> $_torrc_config.$number
     
-    echo "DataDirectory /var/lib/tor.$number" >> /etc/tor/torrc.$number
-    echo "SocksPort 10.0.0.$ip_addr:$number" IsolateClientAddr IsolateClientProtocol IsolateDestAddr >> /etc/tor/torrc.$number
+    echo "DataDirectory /var/lib/tor.$number" >> $_torrc_config.$number
+    echo "SocksPort 10.0.0.$ip_addr:$number" IsolateClientAddr IsolateClientProtocol IsolateDestAddr >> $_torrc_config.$number
     ip_addr_list="$ip_addr_list 10.0.0.$ip_addr:$number"
-    echo "ControlPort $newcontrolport" >> /etc/tor/torrc.$number
-    echo "HashedControlPassword $_tor_hashpass" >> /etc/tor/torrc.$number
-    if test $dnsport -eq 53 ; then
-      echo "DNSPort $dnsport" >> /etc/tor/torrc.$number
-      let dnsport=dnsport+1
-    fi
+    echo "ControlPort $newcontrolport" >> $_torrc_config.$number
+    echo "HashedControlPassword $_tor_hashpass" >> $_torrc_config.$number
+    if test $counter -eq 0 ; then
+      echo "DNSPort $dnsport" >> $_torrc_config.$number
+$counter    fi
 
     #brctl addbr Tor$counter
     #ip link set dev Tor$counter up
@@ -90,15 +99,21 @@ ip_addr=10
 
     let counter=counter+1
     let ip_addr=ip_addr+1
-    if systemctl enable --now tor@$number.service > /dev/null 2>&1 ; then
+    if $systemd && systemctl enable --now tor@$number.service > /dev/null 2>&1 ; hen
       echo "Tor enabled and started!"
+    elif ! $systemd ;then
+      tor -f $_torrc_config.$number
     else
       echo "Failed to enable and start Tor!"
     fi
 
   done
 
-  systemctl restart iptables
+  if $systemd ;then
+    systemctl restart iptables
+  else
+    iptables-restore < /etc/iptables/iptables.rules
+  fi
 
   echo "Tor ControlPort readable password is: $_tor_pass_readable"
   echo "Tor ControlPort hashed password is: $_tor_hashpass"
