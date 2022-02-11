@@ -16,23 +16,25 @@ __init__ () {
 paramerr=false
 systemd=true
 
-if ! which hostnamectl || ! hostnamectl; then
+if ! which hostnamectl > /dev/null 2>&1 || ! hostnamectl > /dev/null 2>&1 ; then
   systemd=false
 fi
 
-if ! which tor; then
+if ! which tor > /dev/null 2>&1 ; then
   echo "Found not tor! - Exit"
   exit 7
 fi
 
-if ! which redsocks; then
+if ! which redsocks > /dev/null 2>&1 ; then
   echo "Found not redsocks!" - Exit!
   exit 7
 fi
 
-if ! setcap cap_net_raw=eip ${which go-dispatch-proxy}; then
+if ! which go-dispatch-proxy > /dev/null 2>&1 ; then
   echo "Found not go-dispatch-proxy! - Exit"
   exit
+else
+  setcap cap_net_raw=eip $(which go-dispatch-proxy)
 fi
 
 }
@@ -41,10 +43,22 @@ fi
 
 function __main__() {
   check_root
-#  __init__
+  __init__
 
+  own_params "${@}"
   modprobe dummy
-  cp data/config/tor@.service  /usr/lib/systemd/system/tor@.service
+
+}
+
+start_tor_servers() {
+
+  start=$1
+  end=$2
+
+  if [ $systemd = true ] ; then
+    cp data/config/tor@.service  /usr/lib/systemd/system/tor@.service
+  fi
+
   echo nameserver 127.0.0.1 > /etc/resolv.conf
   # Stores the current date.
   readonly _cdate=$(date +%Y%m%d)
@@ -65,11 +79,11 @@ counter=0
 dnsport=53
 ip_addr=10
 
-  if [ $systemd ]; then
+  if [ $systemd = true ]; then
     cp data/config/tor@.service /usr/lib/systemd/system/tor.service
   fi
 
-  for number in {9050..9059}
+   for number in $(seq $start $end)
     do
     newcontrolport=$(expr $number + 1100)
 
@@ -79,7 +93,7 @@ ip_addr=10
     echo "User tor" >> $_torrc_config.$number
     echo "Sandbox 1" >> $_torrc_config.$number
     echo "NewCircuitPeriod 5" >> $_torrc_config.$number
-    
+    cp -rp /var/lib/tor /var/lib/tor.$number
     echo "DataDirectory /var/lib/tor.$number" >> $_torrc_config.$number
     echo "SocksPort 10.0.0.$ip_addr:$number" IsolateClientAddr IsolateClientProtocol IsolateDestAddr >> $_torrc_config.$number
     ip_addr_list="$ip_addr_list 10.0.0.$ip_addr:$number"
@@ -87,7 +101,7 @@ ip_addr=10
     echo "HashedControlPassword $_tor_hashpass" >> $_torrc_config.$number
     if test $counter -eq 0 ; then
       echo "DNSPort $dnsport" >> $_torrc_config.$number
-$counter    fi
+    fi
 
     #brctl addbr Tor$counter
     #ip link set dev Tor$counter up
@@ -99,9 +113,9 @@ $counter    fi
 
     let counter=counter+1
     let ip_addr=ip_addr+1
-    if $systemd && systemctl enable --now tor@$number.service > /dev/null 2>&1 ; hen
+    if $systemd = true && systemctl enable --now tor@$number.service ; then
       echo "Tor enabled and started!"
-    elif ! $systemd ;then
+    elif [ $systemd = false ];then
       tor -f $_torrc_config.$number
     else
       echo "Failed to enable and start Tor!"
@@ -109,7 +123,7 @@ $counter    fi
 
   done
 
-  if $systemd ;then
+  if [ $systemd = true ];then
     systemctl restart iptables
   else
     iptables-restore < /etc/iptables/iptables.rules
@@ -127,8 +141,8 @@ $counter    fi
 
 
 own_params() {
-    start=${2:5090}
-    end=${3:6000}
+    start=5090
+    end=5100
 
     if [[ "$#" -eq 0 ]]; then
         printf "%s\\n" "${prog_name}: Argument required"
@@ -136,10 +150,7 @@ own_params() {
         exit 1
     fi
 
-    while [[ "$#" -gt 0 ]]; do
-
-  while true ; do
-
+    if [[ "$#" -gt 0 ]]; then
     case $1 in
 
       -h|--help)
@@ -156,10 +167,7 @@ own_params() {
 
       -s|--start)
 
-        export init_state="1"
-
-        export init_number="${2}"
-
+        start_tor_servers $start $end
         shift 2 ;;
 
       -k|--kill)
@@ -198,23 +206,23 @@ own_params() {
 
     esac
 
-    if [ -n $2 && -n $3 ]; then
-	if [ $2 -le 1 || $2 -ge 65535 ]; then
+    if [[ ! "$2" && ! "$3" ]]; then
+	if [[ $2 -le 1 || $2 -ge 65535 ]]; then
 	  echo "The allowed port range for the start port is 1-65535!"
 	  paramerr=true
-	elif [ $2 -le 1 || $2 -ge 65535 ]; then
+	elif [[ $2 -le 1 || $2 -ge 65535 ]]; then
           echo "The allowed port range for the last port is 1-65535!"
           paramerr=true
-	elif [ ! $paramerr ]; then
+	elif [[ ! $paramerr ]]; then
 	  exit 2
 	fi
 
 	echo
-        echo "The optional argument values are: start port: $num1, last port: $num2."
+        echo "The optional argument values are: start port: $2, last port: $3."
         start=$2
         end=$3
         #Return true if one argument is given
-    elif [ -n $2 && ! -n $3 || ! -n $2 && -n $3 ]; then
+    elif [[ ! "$2" && "$3" || "$2" && ! "$3" ]]; then
         echo
         echo "The correct optional value is: [start-port] [end-port]"
         exit 2
@@ -223,7 +231,7 @@ own_params() {
         echo "There is no optional argument. Use default values: start port: $start, last port: $end"
     fi
 
-  done
+  fi
 }
 
 
