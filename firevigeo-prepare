@@ -109,23 +109,18 @@ ip_addr=10
 
 
 own_params() {
+    start=${2:5090}
+    end=${3:6000}
 
-  eval set -- "$_GETOPT_PARAMS"
   while true ; do
 
     case $1 in
 
-      --help)
+      -h|--help)
 
         _help_
 
         shift ; _exit_ "0" ;;
-
-      --debug)
-
-        export stdout_mode="debug"
-
-        shift ;;
 
       --verbose)
 
@@ -133,7 +128,7 @@ own_params() {
 
         shift ;;
 
-      -i|--init)
+      -s|--start)
 
         export init_state="1"
 
@@ -149,7 +144,7 @@ own_params() {
 
         shift ;;
 
-      -s|--show-id)
+      -s|--show-key)
 
         export show_id_state="1"
 
@@ -161,46 +156,6 @@ own_params() {
         export new_id_state="1"
 
         shift ;;
-
-      -u|--user)
-
-        export user_state="1"
-
-        export user_name="${2}"
-
-        shift 2 ;;
-
-      --socks-port)
-
-        export socks_port_state=1
-
-        export socks_port_number="${2}"
-
-        shift 2 ;;
-
-      --control-port)
-
-        export control_port_state=1
-
-        export control_port_number="${2}"
-
-        shift 2 ;;
-
-      --proxy)
-
-        export proxy_state=1
-
-        export proxy_type="${2}"
-
-        shift 2 ;;
-
-      --haproxy)
-
-        export frontend_state=1
-
-        export frontend_type="haproxy"
-
-        shift 2 ;;
 
       *)
 
@@ -216,6 +171,22 @@ own_params() {
         ;;
 
     esac
+
+    if [ -n $2 && -n $3 ]; then
+	echo
+        echo "The optional argument values are: start port: $num1, last port: $num2."
+        start=$2
+        end=$3
+        #Return true if one argument is given
+    elif [ -n $2 && ! -n $3 || ! -n $2 && -n $3 ]; then
+        echo
+        echo "The correct optional value is: [start-port] [end-port]"
+        break
+    else
+        echo
+        echo "There is no optional argument. Use default values: start port: $start, last port: $end"
+	break
+    fi
 
   done
 }
