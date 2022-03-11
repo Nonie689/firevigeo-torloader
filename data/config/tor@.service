@@ -6,7 +6,7 @@
 
 [Unit]
 Description=Anonymizing overlay network for TCP with torrc: torrc.%i
-After=syslog.target network.target nss-lookup.target
+After=syslog.target network.target nss-lookup.target graphical.target
 
 [Service]
 Type=notify

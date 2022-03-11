@@ -73,7 +73,7 @@ start_tor_servers() {
   readonly _log_stdout="${_log_directory}/firevigeo-prepare.stdout.log"
   readonly _log_path="${_log_directory}/${_log_file}"
   readonly _torrc_config=/etc/tor/torrc
-
+  readonly _proxychain_config=/etc/proxychains
 
 counter=0
 dnsport=53
@@ -83,19 +83,37 @@ ip_addr=10
     cp data/config/tor@.service /usr/lib/systemd/system/tor.service
   fi
 
+
+  # proxychain basic config
+  cp data/config/proxychains.conf ${_proxychain_config}.${counter}.conf
+
+  # Conky basic config
+  mkdir -p /etc/conky/cpu-colors-edit/ 2> /dev/null
+  cp data/config/conkyrc /etc/conky/cpu-colors-edit/.conkyrc
+
    for number in $(seq $start $end)
     do
     newcontrolport=$(expr $number + 1100)
 
     echo "Tor socks: $number "
 
+    # Set proxychain config
+    echo socks4 10.0.0.$ip_addr $number >> ${_proxychain_config}.${counter}.conf
+
+    # Set conky specific parts
+
+
+    echo "${voffset 2}${color0}${font Webdings:size=16}¬${font}${color}${goto 32}${voffset -4}Tor 11 IP: ${alignr}${color2}${exec "proxychains -q -f ${_proxychain_config}.${counter}.conf curl -s 'http://ip-api.com/' | grep query | awk -F':' '{print $2}' | awk -F'"' '{print $2}'"}${color}" >> /etc/conky/cpu-colors-edit/.conkyrc
+  
+    # Set torrc config
     echo "ExcludeNodes {es},{us},{ca},{de},{gb},{au},{nz},{dk},{fr},{nl},{no},{be},{it},{se},{??} StrictNodes 1" > $_torrc_config.$number
+    echo ExitNodes {sg},{sz} StrictNodes 1 >> $_torrc_config.$number
     echo "User tor" >> $_torrc_config.$number
     echo "Sandbox 1" >> $_torrc_config.$number
     echo "NewCircuitPeriod 5" >> $_torrc_config.$number
     cp -rp /var/lib/tor /var/lib/tor.$number
     echo "DataDirectory /var/lib/tor.$number" >> $_torrc_config.$number
-    echo "SocksPort 10.0.0.$ip_addr:$number" IsolateClientAddr IsolateClientProtocol IsolateDestAddr >> $_torrc_config.$number
+    echo "SocksPort 10.0.0.$ip_addr:$number" >> $_torrc_config.$number
     ip_addr_list="$ip_addr_list 10.0.0.$ip_addr:$number"
     echo "ControlPort $newcontrolport" >> $_torrc_config.$number
     echo "HashedControlPassword $_tor_hashpass" >> $_torrc_config.$number
@@ -123,11 +141,26 @@ ip_addr=10
 
   done
 
-  if [ $systemd = true ];then
-    systemctl restart iptables
-  else
-    iptables-restore < /etc/iptables/iptables.rules
-  fi
+ # if [ $systemd = true ];then
+ #   systemctl restart iptables
+ # else
+ #   iptables-restore < /etc/iptables/iptables.rules
+ # fi
+
+   # Save conkyrc to users folder!
+   UHOME="/home"
+   # get list of all users
+  _USERS="$(awk -F':' '{ if ( $3 >= 500 ) print $1 }' /etc/passwd)"
+  for u in $_USERS
+  do
+     _dir="${UHOME}/${u}"
+     if [ -d "$_dir" ]
+     then
+	 mkdir -p $_dir/.conky/cpu-colors-edit
+         cp /etc/conky/cpu-colors-edit/.conkyrc "$_dir/.conky/cpu-colors-edit/"
+         chown $(id -un $u):$(id -gn $u) "$_dir/.conky/cpu-colors-edit/.conkyrc"
+     fi
+  done
 
   echo "Tor ControlPort readable password is: $_tor_pass_readable"
   echo "Tor ControlPort hashed password is: $_tor_hashpass"
