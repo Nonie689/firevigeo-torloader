@@ -79,6 +79,7 @@ start_tor_servers() {
   readonly _proxychain_config=/etc/proxychains
 
   counter=0
+  counter_rw=1
   dnsport=53
   ip_addr=10
 
@@ -87,12 +88,10 @@ start_tor_servers() {
   fi
 
 
-  # proxychain basic config
-  cp ${basename}/data/config/proxychains.conf ${_proxychain_config}.${counter}.conf
-
   # Conky basic config
   mkdir -p /etc/conky/cpu-colors-edit/ 2> /dev/null
-  cp ${basename}/data/config/conkyrc /etc/conky/cpu-colors-edit/.conkyrc
+  cp -f ${basename}/data/config/conkyrc /etc/conky/cpu-colors-edit/.conkyrc
+  echo $_tor_pass_readable > /etc/tor/hashed_pass
 
    for number in $(seq $start $end)
     do
@@ -101,19 +100,20 @@ start_tor_servers() {
     echo "Tor socks: $number "
 
     # Set proxychain config
-    echo socks4 10.0.0.$ip_addr $number >> ${_proxychain_config}.${counter}.conf
+    cp ${basename}/data/config/proxychains.conf $_proxychain_config.$counter.conf
+    echo socks4 10.0.0.$ip_addr $number >> $_proxychain_config.$counter.conf
 
     # Set conky specific parts
 
 
-    echo '${goto 32}${voffset -4}Tor ${counter} IP: ${alignr}${color2}${exec proxychains -q -f ${_proxychain_config}.${counter}.conf curl -s "http://ip-api.com/" | grep query | awk -F ":" "{print $2}" | awk -F"\"" '{print $2}'}${color}' >> /etc/conky/cpu-colors-edit/.conkyrc
+    echo \${goto 32}\${voffset -4}Tor $counter_rw IP: \${alignr}\${color2}\${exec proxychains -q -f $_proxychain_config.$counter.conf "curl -s 'http://ip-api.com/' | grep query | awk -F ':' '{print \$2}' | awk -F '\"' '{print \$2}'"}\${color} >> /etc/conky/cpu-colors-edit/.conkyrc
   
     # Set torrc config
     echo "ExcludeNodes {es},{us},{ca},{de},{gb},{au},{nz},{dk},{fr},{nl},{no},{be},{it},{se},{??} StrictNodes 1" > $_torrc_config.$number
-    echo ExitNodes {sg},{sz} StrictNodes 1 >> $_torrc_config.$number
+    echo ExitNodes {eg},{by},{hk},{eg},{ge},{ph},{za},{tj},{ae},{tw},{th},{kp},{rs},{mx},{sh},{jp},{ru},{ro} StrictNodes 1 >> $_torrc_config.$number
     echo "User tor" >> $_torrc_config.$number
     echo "Sandbox 1" >> $_torrc_config.$number
-    echo "NewCircuitPeriod 5" >> $_torrc_config.$number
+    echo "NewCircuitPeriod 2" >> $_torrc_config.$number
     cp -rp /var/lib/tor /var/lib/tor.$number
     echo "DataDirectory /var/lib/tor.$number" >> $_torrc_config.$number
     echo "SocksPort 10.0.0.$ip_addr:$number" >> $_torrc_config.$number
@@ -128,16 +128,17 @@ start_tor_servers() {
     #ip link set dev Tor$counter up
     #ip addr add 10.0.0.$ip_addr/24 br 255.255.255.0 dev Tor$counter
 
-    ip link add eth$counter type dummy
-    ip addr add 10.0.0.$ip_addr/24 brd + dev eth$counter label eth$counter:0
-    ip link set dev eth$counter up
+    ip link add eth$counter type dummy  2>&1 
+    ip addr add 10.0.0.$ip_addr/24 brd + dev eth$counter label eth$counter:0 2>&1 
+    ip link set dev eth$counter up  2>&1
 
     let counter=counter+1
+    let counter_rw=counter_rw+1
     let ip_addr=ip_addr+1
     if $systemd = true && systemctl enable --now tor@$number.service ; then
       echo "Tor enabled and started!"
     elif [ $systemd = false ];then
-      tor -f $_torrc_config.$number
+      tor -f $_torrc_config.$number --keygen
     else
       echo "Failed to enable and start Tor!"
     fi
@@ -160,7 +161,7 @@ start_tor_servers() {
      if [ -d "$_dir" ]
      then
 	 mkdir -p $_dir/.conky/cpu-colors-edit
-         cp /etc/conky/cpu-colors-edit/.conkyrc "$_dir/.conky/cpu-colors-edit/"
+         cp -f /etc/conky/cpu-colors-edit/.conkyrc "$_dir/.conky/cpu-colors-edit/"
          chown $(id -un $u):$(id -gn $u) "$_dir/.conky/cpu-colors-edit/.conkyrc"
      fi
   done
