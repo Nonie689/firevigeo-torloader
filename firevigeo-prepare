@@ -55,8 +55,11 @@ start_tor_servers() {
   start=$1
   end=$2
 
+  readonly script="$0"
+  readonly basename="$(dirname $script)"
+
   if [ $systemd = true ] ; then
-    cp data/config/tor@.service  /usr/lib/systemd/system/tor@.service
+    cp ${basename}/data/config/tor@.service  /usr/lib/systemd/system/tor@.service
   fi
 
   echo nameserver 127.0.0.1 > /etc/resolv.conf
@@ -75,21 +78,21 @@ start_tor_servers() {
   readonly _torrc_config=/etc/tor/torrc
   readonly _proxychain_config=/etc/proxychains
 
-counter=0
-dnsport=53
-ip_addr=10
+  counter=0
+  dnsport=53
+  ip_addr=10
 
   if [ $systemd = true ]; then
-    cp data/config/tor@.service /usr/lib/systemd/system/tor.service
+    cp ${basename}/data/config/tor@.service /usr/lib/systemd/system/tor.service
   fi
 
 
   # proxychain basic config
-  cp data/config/proxychains.conf ${_proxychain_config}.${counter}.conf
+  cp ${basename}/data/config/proxychains.conf ${_proxychain_config}.${counter}.conf
 
   # Conky basic config
   mkdir -p /etc/conky/cpu-colors-edit/ 2> /dev/null
-  cp data/config/conkyrc /etc/conky/cpu-colors-edit/.conkyrc
+  cp ${basename}/data/config/conkyrc /etc/conky/cpu-colors-edit/.conkyrc
 
    for number in $(seq $start $end)
     do
@@ -103,7 +106,7 @@ ip_addr=10
     # Set conky specific parts
 
 
-    echo "${voffset 2}${color0}${font Webdings:size=16}¬${font}${color}${goto 32}${voffset -4}Tor 11 IP: ${alignr}${color2}${exec "proxychains -q -f ${_proxychain_config}.${counter}.conf curl -s 'http://ip-api.com/' | grep query | awk -F':' '{print $2}' | awk -F'"' '{print $2}'"}${color}" >> /etc/conky/cpu-colors-edit/.conkyrc
+    echo '${goto 32}${voffset -4}Tor ${counter} IP: ${alignr}${color2}${exec proxychains -q -f ${_proxychain_config}.${counter}.conf curl -s "http://ip-api.com/" | grep query | awk -F ":" "{print $2}" | awk -F"\"" '{print $2}'}${color}' >> /etc/conky/cpu-colors-edit/.conkyrc
   
     # Set torrc config
     echo "ExcludeNodes {es},{us},{ca},{de},{gb},{au},{nz},{dk},{fr},{nl},{no},{be},{it},{se},{??} StrictNodes 1" > $_torrc_config.$number
@@ -249,12 +252,13 @@ own_params() {
 	elif [[ ! $paramerr ]]; then
 	  exit 2
 	fi
-
-	echo
-        echo "The optional argument values are: start port: $2, last port: $3."
-        start=$2
-        end=$3
-        #Return true if one argument is given
+        if [[ "$#" -gt 1 ]]; then
+	  echo
+          echo "The optional argument values are: start port: $2, last port: $3."
+          start=$2
+          end=$3
+          #Return true if one argument is given
+        fi
     elif [[ ! "$2" && "$3" || "$2" && ! "$3" ]]; then
         echo
         echo "The correct optional value is: [start-port] [end-port]"
