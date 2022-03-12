@@ -110,7 +110,7 @@ start_tor_servers() {
   
     # Set torrc config
     echo "ExcludeNodes {es},{us},{ca},{de},{gb},{au},{nz},{dk},{fr},{nl},{no},{be},{it},{se},{??} StrictNodes 1" > $_torrc_config.$number
-    echo ExitNodes {eg},{by},{hk},{eg},{ge},{ph},{za},{tj},{ae},{tw},{th},{kp},{rs},{mx},{sh},{jp},{ru},{ro} StrictNodes 1 >> $_torrc_config.$number
+    echo ExitNodes {eg},{hk},{ph},{tj},{tw},{th},{kp},{rs},{jp},{ru} StrictNodes 1 >> $_torrc_config.$number
     echo "User tor" >> $_torrc_config.$number
     echo "Sandbox 1" >> $_torrc_config.$number
     echo "NewCircuitPeriod 2" >> $_torrc_config.$number
