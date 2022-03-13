@@ -110,7 +110,7 @@ start_tor_servers() {
   
     # Set torrc config
     echo "ExcludeNodes {es},{us},{ca},{de},{gb},{au},{nz},{dk},{fr},{nl},{no},{be},{it},{se},{??} StrictNodes 1" > $_torrc_config.$number
-    echo ExitNodes {eg},{hk},{ph},{tj},{tw},{th},{kp},{rs},{jp},{ru} StrictNodes 1 >> $_torrc_config.$number
+    echo ExitNodes {eg},{hk},{ph},{tj},{tw},{th},{kp},{jp},{ru} StrictNodes 1 >> $_torrc_config.$number
     echo "User tor" >> $_torrc_config.$number
     echo "Sandbox 1" >> $_torrc_config.$number
     echo "NewCircuitPeriod 2" >> $_torrc_config.$number
@@ -135,12 +135,11 @@ start_tor_servers() {
     let counter=counter+1
     let counter_rw=counter_rw+1
     let ip_addr=ip_addr+1
-    if $systemd = true && systemctl enable --now tor@$number.service ; then
-      echo "Tor enabled and started!"
-    elif [ $systemd = false ];then
-      tor -f $_torrc_config.$number --keygen
+    tor -f $_torrc_config.$number > /dev/null 2>&1 & 
+    if [[ $? -ne 0 ]] ; then
+      echo "Tor $counter started!"
     else
-      echo "Failed to enable and start Tor!"
+      echo "Failed to start Tor!"
     fi
 
   done
