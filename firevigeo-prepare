@@ -128,11 +128,11 @@ start_tor_servers() {
     #ip link set dev Tor$counter up
     #ip addr add 10.0.0.$ip_addr/24 br 255.255.255.0 dev Tor$counter
 
-    ip link add eth$counter type dummy  2>&1 
-    ip addr add 10.0.0.$ip_addr/24 brd + dev eth$counter label eth$counter:0 2>&1 
-    ip link set dev eth$counter up  2>&1
+    ip link add eth$counter type dummy  > /dev/null 2>&1 
+    ip addr add 10.0.0.$ip_addr/24 brd + dev eth$counter label eth$counter:0  > /dev/null 2>&1 
+    ip link set dev eth$counter up  > /dev/null 2>&1 
 
-    let counter=counter+1
+    let counter=counter+1C
     let counter_rw=counter_rw+1
     let ip_addr=ip_addr+1
     tor -f $_torrc_config.$number > /dev/null 2>&1 & 
