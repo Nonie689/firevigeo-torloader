@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 verbose_mode="false"
 
@@ -43,6 +43,7 @@ fi
 
 function __main__() {
   check_root
+  kill $(pidof tor)
   __init__
 
   own_params "${@}"
@@ -65,7 +66,8 @@ start_tor_servers() {
   echo nameserver 127.0.0.1 > /etc/resolv.conf
   # Stores the current date.
   readonly _cdate=$(date +%Y%m%d)
-  readonly _tor_pass_readable=$(date +%Y%m%d && echo $(( $RANDOM % 100000000 + 1 )))
+  random=$(shuf -i 10000-1000000 -n1)
+  readonly _tor_pass_readable=$(date +%Y%m%d)$random
   readonly _tor_hashpass="$(tor --hash-password "${_tor_pass_readable}" | tail -1)"
   # Variables related to the log file. Divided into three parts due
   # to the better possibility of manipulation for the user.
@@ -136,19 +138,13 @@ start_tor_servers() {
     let counter_rw=counter_rw+1
     let ip_addr=ip_addr+1
     tor -f $_torrc_config.$number > /dev/null 2>&1 & 
-    if [[ $? -ne 0 ]] ; then
+    if [ $? -eq 0 ] ; then
       echo "Tor $counter started!"
     else
       echo "Failed to start Tor!"
     fi
 
   done
-
- # if [ $systemd = true ];then
- #   systemctl restart iptables
- # else
- #   iptables-restore < /etc/iptables/iptables.rules
- # fi
 
    # Save conkyrc to users folder!
    UHOME="/home"
@@ -165,14 +161,32 @@ start_tor_servers() {
      fi
   done
 
+  # Check for redsocks iptables
+  redsocks -v > /dev/null 2>&1 
+  if [ "$?" -eq 0 ] ; then
+
+     #Reset iptables
+     echo
+     echo "Reset iptables!"
+     /usr/bin/iptables -F && /usr/bin/iptables -t nat -F 
+     # Load iptables
+     echo "Load iptables!"
+     sleep 3
+     iptables-restore /etc/iptables/redsocks.rules 2> /dev/null
+     if [ "$?" -ne 0 ] ; then
+       echo "can't set /etc/iptables/iptables.rules"
+       exit 22
+     fi
+  else
+    echo "You have not installed REDSOCKS!"
+  fi
+
   echo "Tor ControlPort readable password is: $_tor_pass_readable"
   echo "Tor ControlPort hashed password is: $_tor_hashpass"
+  echo
   echo "Start Load Balancer for: $ip_addr_list"
-#        "value is less or equal 1023"
 
-
-#        _sprintf "stop" "value is equal or grather then 65536"
-
+  exit 0
 }
 
 
@@ -204,7 +218,7 @@ own_params() {
       -s|--start)
 
         start_tor_servers $start $end
-        shift 2 ;;
+        shift ;;
 
       -k|--kill)
 
@@ -229,7 +243,7 @@ own_params() {
 
       *)
 
-        if [[ "$2" == "-" ]] || [[ ! -z "$2" ]] ; then
+        if [[ "$2" == "-" ]] ; then
 
           printf "%s: invalid option -- '%s'\\n" "$_init_name" "$2"
           _exit_ "1"
@@ -242,7 +256,7 @@ own_params() {
 
     esac
 
-    if [[ ! "$2" && ! "$3" ]]; then
+    if [[ "$2" && "$3" ]]; then
 	if [[ $2 -le 1 || $2 -ge 65535 ]]; then
 	  echo "The allowed port range for the start port is 1-65535!"
 	  paramerr=true
@@ -263,9 +277,6 @@ own_params() {
         echo
         echo "The correct optional value is: [start-port] [end-port]"
         exit 2
-    else
-        echo
-        echo "There is no optional argument. Use default values: start port: $start, last port: $end"
     fi
 
   fi
