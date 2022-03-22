@@ -14,36 +14,45 @@ check_root() {
 __init__ () {
 
 paramerr=false
-systemd=true
 
-if ! which hostnamectl > /dev/null 2>&1 || ! hostnamectl > /dev/null 2>&1 ; then
-  systemd=false
-fi
-
+not_there=false
 if ! which tor > /dev/null 2>&1 ; then
-  echo "Found not tor! - Exit"
-  exit 7
-fi
-
-if ! which redsocks > /dev/null 2>&1 ; then
-  echo "Found not redsocks!" - Exit!
-  exit 7
+  echo "Found not tor! - Please install it!"
+  not_there=true
 fi
 
 if ! which go-dispatch-proxy > /dev/null 2>&1 ; then
-  echo "Found not go-dispatch-proxy! - Exit"
-  exit
+  echo "Found not go-dispatch-proxy! - Please install it!"
+  not_there=true
 else
   setcap cap_net_raw=eip $(which go-dispatch-proxy)
 fi
 
+if ! which redsocks > /dev/null 2>&1 ; then
+  echo "Found not redsocks! - Please install it!"
+  not_there=true
+fi
+
+if ! which conky > /dev/null 2>&1 ; then
+  echo "Found not conky - Please install it!"
+  not_there=true
+fi
+
+if $not_there ; then
+exit 2
+fi
 }
 
-
+generate_random(){
+shuf -i 10000-1000000 -n1
+}
 
 function __main__() {
+  ###  Here is the main construct of this tool! 
   check_root
-  kill $(pidof tor)
+  
+  # Killall runnig tor processes if existing!
+  kill $(pidof tor) &> /dev/null
   __init__
 
   own_params "${@}"
@@ -51,72 +60,80 @@ function __main__() {
 
 }
 
+get_date_time() {
+#get date time formated"
+  date +%Y.%m.%d\ at\ %h:%m
+}
+
+
 start_tor_servers() {
 
   start=$1
   end=$2
-
+  
+  readonly number_torsrv_wanted="$(expr $end -  $start)"
   readonly script="$0"
   readonly basename="$(dirname $script)"
 
-  if [ $systemd = true ] ; then
-    cp ${basename}/data/config/tor@.service  /usr/lib/systemd/system/tor@.service
-  fi
+  echo "nameserver 127.0.0.1" > /etc/resolv.conf
 
-  echo nameserver 127.0.0.1 > /etc/resolv.conf
-  # Stores the current date.
-  readonly _cdate=$(date +%Y%m%d)
-  random=$(shuf -i 10000-1000000 -n1)
-  readonly _tor_pass_readable=$(date +%Y%m%d)$random
-  readonly _tor_hashpass="$(tor --hash-password "${_tor_pass_readable}" | tail -1)"
+  #  Early inititialisation part -  Setting up start variables with needet init values!
+  # Stores the executing start date.
+  readonly _cdate="$(date +%Y%m%d)"
+  readonly _init_date="$(get_date_time)"
+
+  readonly _init_random="$(generate_random)"
+  readonly _tor_pass_readable="$_cdate$_init_random"
+  readonly _tor_hashpass="$(tor --hash-password $_tor_pass_readable|tail +3)"
   # Variables related to the log file. Divided into three parts due
   # to the better possibility of manipulation for the user.
-  # shellcheck disable=SC2154
   readonly _log_directory="/var/log"
-  # shellcheck disable=SC2154
   readonly _log_file="firevigeo-prepare.${_cdate}.log"
   readonly _log_stdout="${_log_directory}/firevigeo-prepare.stdout.log"
   readonly _log_path="${_log_directory}/${_log_file}"
-  readonly _torrc_config=/etc/tor/torrc
-  readonly _proxychain_config=/etc/proxychains
+  readonly _torrc_config="/etc/tor/torrc"
+  readonly _proxychain_config="/etc/proxychains"
 
   counter=0
   counter_rw=1
   dnsport=53
   ip_addr=10
 
-  if [ $systemd = true ]; then
-    cp ${basename}/data/config/tor@.service /usr/lib/systemd/system/tor.service
-  fi
+  # Saved new hashed pass as readable file
+ echo "Saved new hashed pass to /etc/tor/hashed_pass" &&  echo -e "
+   ###############################################################
+ \n####### Passwords for all tor  processed started with firevigeo!\n#######Generated on:  $_init_date   for  Tor Proxy Number from    $start till $end ! \n####### Number of Tor Proxy clients =   $number_torsrv_wanted!\n###############################################################\n\n\n# Readable Tor password\n_pass_plain=$_tor_pass_readable\n\n# Generated hash Tor password\n_pass_hash=$_tor_hashpass" > /etc/tor/hashed_pass && chmod 600  /etc/tor/hashed_pass
+
+   # Copy uncomplete conky config to  systemfolder!    ----    Using  files from script  ."/data/config"  folder 
+   mkdir -p "/etc/conky/cpu-colors-edit/" 2> /dev/null
+   cp -f "${basename}/data/config/conkyrc" "/etc/conky/cpu-colors-edit/.conkyrc"
 
 
-  # Conky basic config
-  mkdir -p /etc/conky/cpu-colors-edit/ 2> /dev/null
-  cp -f ${basename}/data/config/conkyrc /etc/conky/cpu-colors-edit/.conkyrc
-  echo $_tor_pass_readable > /etc/tor/hashed_pass
-
+   ### Run  forloop and create custom configs for conky and proxychain!
    for number in $(seq $start $end)
     do
-    newcontrolport=$(expr $number + 1100)
-
+	newcontrolport="$(expr $number + 1100)"
     echo "Tor socks: $number "
 
-    # Set proxychain config
-    cp ${basename}/data/config/proxychains.conf $_proxychain_config.$counter.conf
-    echo socks4 10.0.0.$ip_addr $number >> $_proxychain_config.$counter.conf
-
-    # Set conky specific parts
-
-
-    echo \${goto 32}\${voffset -4}Tor $counter_rw IP: \${alignr}\${color2}\${exec proxychains -q -f $_proxychain_config.$counter.conf "curl -s 'http://ip-api.com/' | grep query | awk -F ':' '{print \$2}' | awk -F '\"' '{print \$2}'"}\${color} >> /etc/conky/cpu-colors-edit/.conkyrc
+    # Create  proxychain config foreach tor proxy device with new settings !
+    cp "${basename}/data/config/proxychains.conf" $_proxychain_config.$counter.conf
+    echo "socks4 10.0.0.$ip_addr $number" >> $_proxychain_config.$counter.conf
+	
+   # Add  custom conkycode to conkyrc  tor displaying tor proxy stuff!
+    echo \${goto 12}\${voffset 0}\${font Ubuntu:style=Bold:size=8}Tor $counter_rw IP: \${alignr}\${color2}\${execp proxychains -q -f $_proxychain_config.$counter.conf 'curl -s https://myip.privex.io/index.json| jq  -r .ip' }\${color} >> /etc/conky/cpu-colors-edit/.conkyrc
   
     # Set torrc config
     echo "ExcludeNodes {es},{us},{ca},{de},{gb},{au},{nz},{dk},{fr},{nl},{no},{be},{it},{se},{??} StrictNodes 1" > $_torrc_config.$number
-    echo ExitNodes {eg},{hk},{ph},{tj},{tw},{th},{kp},{jp},{ru} StrictNodes 1 >> $_torrc_config.$number
+    echo "ExitNodes {eg},{hk},{ph},{tj},{tw},{th},{kp},{jp},{ru} StrictNodes 1" >> $_torrc_config.$number
+    echo "User tor" >> $_torrc_config.$number
+    echo "Sandbox 1" >> $_torrc_config.$number
+    # Add foreach Tor-Gateway device extra torrc options with new custom settings!!
+    echo "ExcludeNodes {es},{us},{ca},{de},{gb},{au},{nz},{dk},{fr},{nl},{no},{be},{it},{se},{??} StrictNodes 1" > $_torrc_config.$number
+    echo "ExitNodes {eg},{hk},{ph},{tj},{tw},{th},{kp},{jp},{ru} StrictNodes 1" >> $_torrc_config.$number
     echo "User tor" >> $_torrc_config.$number
     echo "Sandbox 1" >> $_torrc_config.$number
     echo "NewCircuitPeriod 2" >> $_torrc_config.$number
-    cp -rp /var/lib/tor /var/lib/tor.$number
+    cp -rp "/var/lib/tor" "/var/lib/tor.$number"
     echo "DataDirectory /var/lib/tor.$number" >> $_torrc_config.$number
     echo "SocksPort 10.0.0.$ip_addr:$number" >> $_torrc_config.$number
     ip_addr_list="$ip_addr_list 10.0.0.$ip_addr:$number"
@@ -126,10 +143,6 @@ start_tor_servers() {
       echo "DNSPort $dnsport" >> $_torrc_config.$number
     fi
 
-    #brctl addbr Tor$counter
-    #ip link set dev Tor$counter up
-    #ip addr add 10.0.0.$ip_addr/24 br 255.255.255.0 dev Tor$counter
-
     ip link add eth$counter type dummy  > /dev/null 2>&1 
     ip addr add 10.0.0.$ip_addr/24 brd + dev eth$counter label eth$counter:0  > /dev/null 2>&1 
     ip link set dev eth$counter up  > /dev/null 2>&1 
@@ -137,14 +150,17 @@ start_tor_servers() {
     let counter=counter+1
     let counter_rw=counter_rw+1
     let ip_addr=ip_addr+1
-    tor -f $_torrc_config.$number > /dev/null 2>&1 & 
-    if [ $? -eq 0 ] ; then
+
+#Start tor proxy router for virtual  network card! Then check the  execution succeed!
+tor -f $_torrc_config.$number > /dev/null 2>&1 & 
+if [ $? -eq 0 ] ; then
       echo "Tor $counter started!"
     else
       echo "Failed to start Tor!"
     fi
-
-  done
+	
+# End of loop for creating custom new settings!
+ done
 
    # Save conkyrc to users folder!
    UHOME="/home"
@@ -155,16 +171,11 @@ start_tor_servers() {
      _dir="${UHOME}/${u}"
      if [ -d "$_dir" ]
      then
-	 mkdir -p $_dir/.conky/cpu-colors-edit
-         cp -f /etc/conky/cpu-colors-edit/.conkyrc "$_dir/.conky/cpu-colors-edit/"
+	   mkdir -p $_dir/.conky/cpu-colors-edit 2> /dev/null 
+        cp -f /etc/conky/cpu-colors-edit/.conkyrc "$_dir/.conky/cpu-colors-edit/"
          chown $(id -un $u):$(id -gn $u) "$_dir/.conky/cpu-colors-edit/.conkyrc"
      fi
   done
-
-  # Check for redsocks iptables
-  redsocks -v > /dev/null 2>&1 
-  if [ "$?" -eq 0 ] ; then
-
      #Reset iptables
      echo
      echo "Reset iptables!"
@@ -177,9 +188,6 @@ start_tor_servers() {
        echo "can't set /etc/iptables/iptables.rules"
        exit 22
      fi
-  else
-    echo "You have not installed REDSOCKS!"
-  fi
 
   echo "Tor ControlPort readable password is: $_tor_pass_readable"
   echo "Tor ControlPort hashed password is: $_tor_hashpass"

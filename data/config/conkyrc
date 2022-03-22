@@ -1,0 +1,78 @@
+update_interval 1
+net_avg_samples 1
+cpu_avg_samples 1
+if_up_strictness link
+
+imlib_cache_size 0
+double_buffer yes
+no_buffers false
+
+format_human_readable
+
+#####################
+# - Text settings - #
+#####################
+use_xft yes
+xftfont Ubuntu:size 8
+override_utf8_locale yes
+text_buffer_size 4092
+
+#############################
+# - Window specifications - #
+#############################
+own_window true
+own_window_type normal
+own_window_argb_visual yes
+own_window_transparent yes
+own_window_hints undecorated,below,sticky,skip_taskbar,skip_pager
+
+alignment top_left
+gap_x 20
+gap_y 540
+minimum_size 220 550
+
+default_bar_size 70
+
+#########################
+# - Graphics settings - #
+#########################
+draw_shades yes
+
+default_color cccccc
+
+color0 white
+color1 77507b
+color2 white
+color3 5C3566
+
+own_window_argb_value 38
+own_window_colour 241F31
+TEXT
+${font Ubuntu:size=8}SYSTEM $stippled_hr${font}
+##############
+# - SYSTEM - #
+##############
+${color0}${font Poky:size=14}S${font}${color}${goto 32}${voffset -8}Kernel:  ${alignr}${color2}${kernel}${color}
+${goto 32}Uptime: ${alignr}${color2}${uptime}${color}
+#### |--CPU
+${voffset 2}${offset 2}${color0}${font Poky:size=14}P${font}${offset -19}${voffset 9}${offset 1}${cpubar cpu0 4,18}${color}${voffset -16}${goto 32}CPU1: ${font Ubuntu:style=Bold:size=8}${color1}${cpu cpu1}%${color}${font} ${alignr}${color2}${cpugraph cpu1 8,60 77507B 5C3566}${color}
+#### |--MEM
+${voffset 2}${offset 1}${color0}${font Poky:size=14}M${font}${color}${goto 32}${voffset -7}RAM: ${font Ubuntu:style=Bold:size=8}${color1}$memperc%${color}${font}
+${voffset 1}${offset 1}${voffset 2}${color0}${membar 4,18}${color}${goto 32}${voffset -2}F: ${font Ubuntu:style=Bold:size=8}${color2}${memeasyfree}${color}${font} U: ${font Ubuntu:style=Bold:size=8}${color2}${mem}${color}${font}
+############ä#
+# - CLOCK -  #
+#############ä
+${voffset 8}${font Ubuntu:style=Bold:size=8}DATE $stippled_hr${font}
+${voffset -10}${alignc 46}${color2}${font Arial Black:size=30}${time %H:%M}${font}${color}
+${alignc}${time %d %B %Y}
+###############
+# - NETWORK - #
+###############
+${voffset 8}${font Ubuntu:style=Bold:size=8}NETWORK $stippled_hr${font}
+
+${goto 12}${voffset -10}${font Ubuntu:size=8}IP Address: ${alignr}${execp ip -4 -o a |grep -v forever | awk '{print $4}'}${color}
+###################
+# - TOR NETWORK - #
+###################
+${voffset 12}${font Ubuntu:style=Bold:size=8}---- TOR NETWORK STATUS LIST ----${font}
+
