@@ -1,1 +1,0 @@
-${goto 12}${font Ubuntu:style=normal:size=9}${color2}${execpi 50 tor_ip=$(proxychains -q -f laaaaaaaaaaaaa "curl -s 'http://ip-api.com/' | grep query | awk -F ':' '{print $2}' | awk -F '"' '{print $2}'"); printf %s\t%s  TOR \5/   IP: $tor_ip }${color}
