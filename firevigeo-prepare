@@ -123,16 +123,12 @@ start_tor_servers() {
     echo \${goto 12}\${voffset 0}\${font Ubuntu:style=Bold:size=8}Tor $counter_rw IP: \${alignr}\${color2}\${execp proxychains -q -f $_proxychain_config.$counter.conf 'curl -s https://myip.privex.io/index.json| jq  -r .ip' }\${color} >> /etc/conky/cpu-colors-edit/.conkyrc
   
     # Set torrc config
-    echo "ExcludeNodes {es},{us},{ca},{de},{gb},{au},{nz},{dk},{fr},{nl},{no},{be},{it},{se},{??} StrictNodes 1" > $_torrc_config.$number
-    echo "ExitNodes {eg},{hk},{ph},{tj},{tw},{th},{kp},{jp},{ru} StrictNodes 1" >> $_torrc_config.$number
-    echo "User tor" >> $_torrc_config.$number
-    echo "Sandbox 1" >> $_torrc_config.$number
     # Add foreach Tor-Gateway device extra torrc options with new custom settings!!
     echo "ExcludeNodes {es},{us},{ca},{de},{gb},{au},{nz},{dk},{fr},{nl},{no},{be},{it},{se},{??} StrictNodes 1" > $_torrc_config.$number
     echo "ExitNodes {eg},{hk},{ph},{tj},{tw},{th},{kp},{jp},{ru} StrictNodes 1" >> $_torrc_config.$number
     echo "User tor" >> $_torrc_config.$number
     echo "Sandbox 1" >> $_torrc_config.$number
-    echo "NewCircuitPeriod 2" >> $_torrc_config.$number
+    echo "NewCircuitPeriod 7" >> $_torrc_config.$number
     cp -rp "/var/lib/tor" "/var/lib/tor.$number"
     echo "DataDirectory /var/lib/tor.$number" >> $_torrc_config.$number
     echo "SocksPort 10.0.0.$ip_addr:$number" >> $_torrc_config.$number
