@@ -1,0 +1,12 @@
+[Unit]
+Description=Start Firevigeo Tor-Setup creation!
+After=network-online.target
+
+[Service]
+Type=simple
+ExecStart=firevigeo-prepare -s
+Restart=on-failure
+RestartSec=2s
+
+[Install]
+Alias=firevigeo.service

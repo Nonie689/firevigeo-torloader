@@ -4,7 +4,7 @@
 #                                                                                 #
 # firevigeo                                                                       #
 #                                                                                 #
-# version: 0.6.2                                                                  #
+# version: 0.8.1                                                                  #
 #                                                                                 #
 # A tool to start multiple tor proxys with transparent loadbalancing feature!     #
 # This tool redirect the complete traffic trough loadbalanced tor clients, with   #
@@ -49,7 +49,7 @@
 #
 # program information
 readonly prog_name="firevigeo"
-readonly version="0.6.2"
+readonly version="0.8.1"
 readonly signature="Copyright (C) 2022 Nonie689"
 readonly git_url="https://github.com/Nonie689/firevigeo-torloader"
 
@@ -71,8 +71,8 @@ export reset="$(tput sgr0)"
 ## Display program version
 print_version() {
     printf "%s\\n" "${prog_name} ${version}"
-    printf "%s\\n" "${signature}"
-    printf "%s\\n" "License GPLv3: GNU GPL version 3 or later <https://gnu.org/licenses/gpl.html>"
+    printf "%s\\n\n" "${signature}"
+    printf "%s\\n" "\License GPLv3: GNU GPL version 3 or later <https://gnu.org/licenses/gpl.html>"
     printf "%s\\n" "This is free software: you are free to change and redistribute it."
     printf "%s\\n\n" "There is NO WARRANTY, to the extent permitted by law."
 }
@@ -139,13 +139,9 @@ shuf -i 10000-1000000 -n1
 function __main__() {
   ###  Here is the main construct of this tool! 
   check_root
-  
-  # Killall runnig tor processes if existing!
-  killall tor &> /dev/null || kill $(pidof tor) &> /dev/null
   __init__
 
   own_params "${@}"
-  modprobe dummy &> /dev/null
 
 }
 
@@ -156,7 +152,11 @@ get_date_time() {
 
 
 start_tor_servers() {
-
+  # Killall runnig tor processes if existing!
+  for tor_pid in $(ps aux | grep -E "tor -f /etc/tor/torrc." | grep -v "grep" | awk '{print $2}'); do
+    kill $tor_pid
+  done
+  modprobe dummy &> /dev/null
   start=$1
   end=$2
   
@@ -174,7 +174,7 @@ start_tor_servers() {
 
   readonly _init_random="$(generate_random)"
   readonly _tor_pass_readable="$_cdate$_init_random"
-  readonly _tor_hashpass="$(tor --hash-password $_tor_pass_readable|tail +3)"
+  readonly _tor_hashpass="$(tor --hash-password $_tor_pass_readable| tail -1)"
   # Variables related to the log file. Divided into three parts due
   # to the better possibility of manipulation for the user.
   readonly _log_directory="/var/log"
@@ -190,9 +190,7 @@ start_tor_servers() {
   ip_addr=10
 
   # Saved new hashed pass as readable file at: /etc/tor/hashed_pass
-  echo "Saved new Tor Control password store file at: /etc/tor/hashed_pass" && echo &&  echo -e "
-  ###############################################################
- \n####### Passwords for all tor  processed started with firevigeo! #######\n#######Generated on:  $_init_date   for  Tor Proxy Number from    $start till $end ! ###########\n####### Number of Tor Proxy clients =   $number_torsrv_wanted!##########\n###############################################################\n\n\n# Readable Tor password\n_pass_plain=$_tor_pass_readable\n\n# Generated hash Tor password\n_pass_hash=$_tor_hashpass" > /etc/tor/hashed_pass && chmod 600  /etc/tor/hashed_pass
+  echo "Saved new Tor Control password store file at: /etc/tor/hashed_pass" && echo && echo -e "##############################################################################################\n####### Passwords for all tor  processed started with firevigeo! #############################\n####### Generated on:  $_init_date for Tor Proxy Number from $start till $end ! ####\n############################################################################################\n####### Number of Tor Proxy clients = ${number_torsrv_wanted}! ##################################################\n# Readable Tor password #########\npass_plain=$_tor_pass_readable\n\n# Hash-encoded Tor password #####\npass_hash=$_tor_hashpass" > /etc/tor/hashed_pass && chmod 600  /etc/tor/hashed_pass
 
    # Copy uncomplete conky config to  systemfolder!    ----    Using  files from script  ."/data/config"  folder
    if ! test -d /etc/conky/cpu-colors-edit/ ; then
@@ -238,7 +236,6 @@ start_tor_servers() {
     ip_addr_list="$ip_addr_list 10.0.0.$ip_addr:$number"
     echo "ControlPort $newcontrolport" >> $_torrc_config.$number
     echo "HashedControlPassword $_tor_hashpass" >> $_torrc_config.$number
-
     # Enable only at the first tor client a DNS service!
     if test $counter -eq 0 ; then
       echo "DNSPort $dnsport" >> $_torrc_config.$number
@@ -281,6 +278,12 @@ start_tor_servers() {
 
   #Reset currently used iptables.rules
   echo
+  echo "Disable Network to unload iptables.rules, to prevent IP leaks!"
+  default_ifname="$(netstat -r | awk ' {print $8}' | head -3 | tail -1)"
+  default_ip_addr="$(ip a | grep ${default_ifname} | tail -1| awk '{print $2}')"
+  default_broadcast_addr="$(ip a | grep ${default_ifname} | tail -1| awk '{print $4}')"
+  default_gateway="$(ip route | head -1  | awk '{print $3}')"
+  ip link set dev ${default_ifname} down &> /dev/null
   echo "Unload currently used iptables.rules!"
 
   while true ; do
@@ -297,8 +300,19 @@ start_tor_servers() {
      cat /etc/iptables/redsocks-go-balanced.rules | iptables-restore  -c -w 2 &> /dev/null
      if [ "$?" -ne 0 ] ; then
        echo "Error! - Failed to load new custom iptables rules!"
+       echo "Default Network are still disabled!"
+       echo "If you want to restart the Default Network run:"
+       echo
+       echo "ip addr add default_ip_addr brd + dev ${default_ifname} &> /dev/null && ip link set dev ${default_ifname} up &> /dev/null"
        exit 22
+     else
+       ip addr add default_ip_addr brd + dev ${default_ifname} &> /dev/null; ip link set dev ${default_ifname} up &> /dev/null 
      fi
+
+     iptables -A INPUT -p udp -m udp --dport 137 -j ACCEPT
+     iptables -A INPUT -p udp -m udp --dport 138 -j ACCEPT
+     iptables -A INPUT -p tcp -m tcp --dport 139 -j ACCEPT
+     iptables -A INPUT -p tcp -m tcp --dport 445 -j ACCEPT
 
      # Wait for real iptables load finish!
      sleep 0.5
@@ -314,8 +328,8 @@ start_tor_servers() {
   echo
   echo " -- Some additionaly infos for user --"
   echo
-  echo "Tor ControlPort readable password is: $_tor_pass_readable"
-  echo "Tor ControlPort hashed password is: $_tor_hashpass"
+  echo "Tor ControlPort password in clear text is: $_tor_pass_readable"
+  echo "Tor ControlPort password in coded text is: $_tor_hashpass"
   echo
   echo "Start Load Balancer with: go-dispatch-proxy -lport 4711 -tunnel $ip_addr_list"
 
@@ -334,9 +348,34 @@ reset_iptables() {
      sleep 0.5
 }
 
+
+param_num_check() {
+     if [[ "$#" -gt 1 ]]; then
+        if [[ $2 -lt 5000 || $2 -gt 60000 ]]; then
+          echo "Failure wrong Value! - The start Tor-Proxy range is 5000-60000!"
+          exit 2
+        fi
+        if [[ $3 -lt 5000 || $3 -gt 60000 ]]; then
+          echo "Failure wrong Value! - The End Tor-Proxy range is 5000-60000!"
+          exit 3
+        fi
+        if [[ $2 -gt $3 ]]; then
+          echo "Start Tor-Proxy are not be allowed to be smaller then End Tor-Proxy!"
+          exit 999
+        fi
+     fi
+}
+
+
 own_params() {
     start=5090
     end=5100
+    if ! test -z $2; then
+      start=${2}
+    fi
+    if ! test -z $3; then
+      end=${3}
+    fi
 
     if [[ "$#" -eq 0 ]]; then
         printf "%s\\n" "${prog_name}: Argument required"
@@ -346,83 +385,70 @@ own_params() {
 
     if [[ "$#" -gt 0 ]]; then
     case $1 in
-
       -h|--help)
-
         _help_
-
-        shift ; _exit_ "0" ;;
-
-      --verbose)
-
-        export verbose_mode="true"
-
-        shift ;;
-
-      -s|--start)
-
-        start_tor_servers $start $end
+        exit 0
         shift ;;
 
       -k|--kill)
-
-        export kill_state="1"
-
-        export kill_status="0"
-
+        if [[ "$#" -gt 1 ]]; then
+          echo "To much parameters are given!"
+          exit 9
+        fi
+        for tor_pid in $(ps aux | grep -E "tor -f /etc/tor/torrc." | grep -v "grep" | awk '{print $2}'); do
+          kill $tor_pid
+        done
+        echo Done stopped all Tor instances!
         shift ;;
 
-      -s|--show-key)
+      -r|--runtime-check)
+        if [[ "$#" -gt 1 ]]; then
+          echo "To much parameters are given!"
+          exit 9
+        fi
 
-        export show_id_state="1"
-
+        fail=false
+        if [[ $(ps aux | grep -E "tor -f /etc/tor/torrc." | grep -v "grep"| wc -l) -gt 0 ]]; then
+          echo "Tor Services running!"
+          if [[ $(ps aux | grep -E "redsocks" | grep -v "grep"| wc -l) -gt 0 ]]; then
+            echo " ** Redsocks runs!"
+          else
+            echo " ** [Warn] Redocks not running!"
+            fail=true
+          fi
+          if [[ $(ps aux | grep -E "go-dispatcher" | grep -v "grep"| wc -l) -gt 0 ]]; then
+            echo " ** Go-dispatcher loadbalancer running!"
+          else
+            echo " ** [Warn] Go-dispatche loadbalancer not running!"
+            fail=true
+          fi
+          #####
+          if $fail; then
+            echo
+            echo " ** Firevigeo runtime dependencies are not running!"
+          else
+            echo " Firevigeo is running!"
+          fi
+        else
+          echo " Firevigeo is not running completely!"
+        fi
         shift ;;
 
       -n|--new-id)
+        param_num_check $1 $start $end
+        start_tor_servers $start $end
+        shift ;;
 
-
-        export new_id_state="1"
-
+      -s|--start)
+        param_num_check $1 $start $end
+        start_tor_servers $start $end
         shift ;;
 
       *)
-
-        if [[ "$2" == "-" ]] ; then
-
-          printf "%s: invalid option -- '%s'\\n" "$_init_name" "$2"
-          _exit_ "1"
-
-
-        # elif [[ -z "$2" ]] ; then break ; fi
-        else break ; fi
-
+        echo Error Invalid Option!
+        exit 1
         ;;
-
     esac
-
-    if [[ "$2" && "$3" ]]; then
-	if [[ $2 -le 1 || $2 -ge 65535 ]]; then
-	  echo "The allowed port range for the start port is 1-65535!"
-	  param_error=true
-	elif [[ $2 -le 1 || $2 -ge 65535 ]]; then
-          echo "The allowed port range for the last port is 1-65535!"
-          param_error=true
-	elif [[ ! $param_error ]]; then
-	  exit 2
-	fi
-        if [[ "$#" -gt 1 ]]; then
-	  echo
-          echo "The optional argument values are: start port: $2, last port: $3."
-          start=$2
-          end=$3
-          #Return true if one argument is given
-        fi
-    elif [[ ! "$2" && "$3" || "$2" && ! "$3" ]]; then
-        echo
-        echo "The correct optional value is: [start-port] [end-port]"
-        exit 2
-    fi
-
   fi
 }
 
