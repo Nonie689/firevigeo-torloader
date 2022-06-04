@@ -87,6 +87,12 @@ check_root() {
     fi
 }
 
+
+ord() {
+    LC_CTYPE=C printf '%d' "'$1"
+}
+
+
 __init__ () {
 
 param_error=false
@@ -151,9 +157,19 @@ get_date_time() {
 }
 
 
+start_tor_servers_by_country() {
+countr_count_num=60001
+while read -r country_line
+do
+    country_port=$country_line
+    let countr_count_num=countr_count_num+1
+done < <(cat ${basename}/country_codes.lst | awk -F"[{}]" '{print $2}')
+
+}
+
 start_tor_servers() {
   # Killall runnig tor processes if existing!
-  for tor_pid in $(ps aux | grep -E "tor -f /etc/tor/torrc." | grep -v "grep" | awk '{print $2}'); do
+  for tor_pid in $(ps aux | grep -E "tor -f /etc/tor/torrc\." | grep -v "grep" | awk '{print $2}'); do
     kill $tor_pid
   done
   modprobe dummy &> /dev/null
@@ -276,13 +292,18 @@ start_tor_servers() {
      fi
   done
 
-  #Reset currently used iptables.rules
+  #Reset currently used \iptables.rules
   echo
   echo "Disable Network to unload iptables.rules, to prevent IP leaks!"
   default_ifname="$(netstat -r | awk ' {print $8}' | head -3 | tail -1)"
   default_ip_addr="$(ip a | grep ${default_ifname} | tail -1| awk '{print $2}')"
   default_broadcast_addr="$(ip a | grep ${default_ifname} | tail -1| awk '{print $4}')"
   default_gateway="$(ip route | head -1  | awk '{print $3}')"
+
+  for net_dev in $(ip a | grep -E "UP ."| grep default | awk '{print $2}' | awk -F':' '{print $1}'); do
+     ip link set dev $net_dev down &> /dev/null
+  done
+  
   ip link set dev ${default_ifname} down &> /dev/null
   echo "Unload currently used iptables.rules!"
 
@@ -301,9 +322,10 @@ start_tor_servers() {
      if [ "$?" -ne 0 ] ; then
        echo "Error! - Failed to load new custom iptables rules!"
        echo "Default Network are still disabled!"
-       echo "If you want to restart the Default Network run:"
        echo
-       echo "ip addr add default_ip_addr brd + dev ${default_ifname} &> /dev/null && ip link set dev ${default_ifname} up &> /dev/null"
+       for net_dev in $(ip a | grep -E "DOWN ."| grep default | awk '{print $2}' | awk -F':' '{print $1}'); do
+          ip link set dev $net_dev UP &> /dev/null
+       done
        exit 22
      else
        ip addr add default_ip_addr brd + dev ${default_ifname} &> /dev/null; ip link set dev ${default_ifname} up &> /dev/null 
@@ -333,6 +355,7 @@ start_tor_servers() {
   echo
   echo "Start Load Balancer with: go-dispatch-proxy -lport 4711 -tunnel $ip_addr_list"
 
+  start_tor_servers_by_country
   exit 0
 }
 
@@ -366,6 +389,19 @@ param_num_check() {
      fi
 }
 
+_help_(){
+print_version
+echo "firevigeo-prepare [OPTIONS]"
+echo
+echo "OPTIONS:"
+echo -e "   -h|--help                              Shows this help message!"
+echo -e "   -k|--kill                              Kills all Tor Proxys!"
+echo -e "   -r|--runtime-check                     Checks firevigeo runtime state status!"
+echo -e "   -s|--start    #Start_Port #End_Port    Start firevigeo Tor-Proxys [optional own Port range]!"
+echo -e "   -n|--new-id   #Start_Port #End_Port    Start firevigeo Tor-Proxys [optional own Port range]!"
+
+}
+
 
 own_params() {
     start=5090
@@ -395,10 +431,23 @@ own_params() {
           echo "To much parameters are given!"
           exit 9
         fi
-        for tor_pid in $(ps aux | grep -E "tor -f /etc/tor/torrc." | grep -v "grep" | awk '{print $2}'); do
+        for tor_pid in $(ps aux | grep -E "tor -f /etc/tor/torrc\." | grep -v "grep" | awk '{print $2}'); do
           kill $tor_pid
         done
+
+        for net_dev in $(ip a | grep -E "DOWN ."| grep default | awk '{print $2}' | awk -F':' '{print $1}'); do
+          ip link set dev $net_dev up &> /dev/null
+        done
+
         echo Done stopped all Tor instances!
+        echo
+        echo "Unload currently used iptables.rules!"
+        reset_iptables
+        iptables-restore /etc/iptables/iptables.rules & > /dev/null && echo "Restarted iptables with default system firewall rules!"
+        echo "Change DNS service to use Google DNS service!"
+        echo "nameserver 8.8.8.8" > /etc/resolv.conf
+        echo
+        echo "Done!"
         shift ;;
 
       -r|--runtime-check)
