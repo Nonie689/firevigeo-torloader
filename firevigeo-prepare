@@ -239,7 +239,7 @@ start_tor_servers() {
     # Add foreach Tor-Gateway device extra torrc options with new custom settings!!
 
     echo "ExcludeNodes {es},{us},{ca},{de},{li},{at},{gb},{la},{au},{nz},{dk},{fr},{nl},{lt},{ng},{nf},{no},{ma},{cz},{fi},{et},{fx},{gf},{pf},{ie},{tf},{so},{sv},{pa},{gq},{no},{dj},{gs},{re},{hr},{ky},{gn},{ht},{hm},{gw},{gi},{gr},{gl},{cl},{cc},{cg},{co},{cl},{cd},{cx},{tc},{hu},{vc},{is},{be},{in},{is},{hu},{hn},{ht},{bg},{vg},{io},{lu},{mt},{mx},{mv},{ml},{mh},{mn},{mn},{me},{bw},{ba},{bo},{mm},{mc},{mn},{me},{ph},{np},{an},{bh},{by},{be},{am},{ar},{aq},{dz},{al},{af},{ne},{lr},{lb},{lv},{cf},{ly},{it},{uk},{se},{um},{ru},{sa},{cn},{ae},{uy},{uz},{va},{ve},{vi},{gq},{tj},{lv},{eh},{eh},{zw},{sd},{iq},{sk},{za},{lk},{sd},{sz},{tz},{to},{tn},{tv},{ug},{il},{ir},{tm},{kr},{sy},{az},{tr},{vn},{gq},{am},{kg},{kz},{by},{ua},{uz},{tj},{ir},{lb},{mm},{na},{np},{ps},{bd},{ph},{pl},{pt},{qa},{sm},{ly},{pr},{ye},{??} StrictNodes 1" > $_torrc_config.$number
-    echo "ExitNodes {tj},{tw},{th},{jp},{mk},{ro},{vg},{br},{lc},{ge},{gh},{co},{cm},{dm},{do},{gp},{ke},{md},{kp},{mg},{pk},{nc},{rs},{pg},{gt},{ec},{ad},{si},{sb},{py},{pe},{lk},{tz},{ug},{vn},{cr},{sl},{ni},{zm},{tz},{sr},{kw},{sn},{kh},{bd},{id},{ai},{gy} StrictNodes 1" >> $_torrc_config.$number
+    echo "ExitNodes {tj},{tw},{th},{jp},{ro},{vg},{br},{lc},{ge},{gh},{co},{dm},{do},{gp},{ke},{kp},{pk},{nc},{rs},{pg},{gt},{ec},{ad},{sb},{py},{pe},{lk},{tz},{ug},{vn},{cr},{sl},{ni},{zm},{tz},{sr},{kw},{sn},{kh},{bd},{id},{gy} StrictNodes 1" >> $_torrc_config.$number
     echo "User tor" >> $_torrc_config.$number
     echo "Sandbox 1" >> $_torrc_config.$number
     echo "HardwareAccel 1" >> $_torrc_config.$number
