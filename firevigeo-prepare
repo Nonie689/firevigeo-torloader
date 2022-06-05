@@ -237,16 +237,19 @@ start_tor_servers() {
   
     # Set torrc config
     # Add foreach Tor-Gateway device extra torrc options with new custom settings!!
-    echo "ExcludeNodes {es},{us},{ca},{de},{gb},{au},{nz},{dk},{fr},{nl},{no},{be},{it},{se},{??} StrictNodes 1" > $_torrc_config.$number
-    echo "ExitNodes {eg},{hk},{ph},{tj},{tw},{th},{kp},{jp},{ru} StrictNodes 1" >> $_torrc_config.$number
+
+    echo "ExcludeNodes {es},{us},{ca},{de},{li},{at},{gb},{la},{au},{nz},{dk},{fr},{nl},{lt},{ng},{nf},{no},{ma},{cz},{fi},{et},{fx},{gf},{pf},{ie},{tf},{so},{sv},{pa},{gq},{no},{dj},{gs},{re},{hr},{ky},{gn},{ht},{hm},{gw},{gi},{gr},{gl},{cl},{cc},{cg},{co},{cl},{cd},{cx},{tc},{hu},{vc},{is},{be},{in},{is},{hu},{hn},{ht},{bg},{vg},{io},{lu},{mt},{mx},{mv},{ml},{mh},{mn},{mn},{me},{bw},{ba},{bo},{mm},{mc},{mn},{me},{ph},{np},{an},{bh},{by},{be},{am},{ar},{aq},{dz},{al},{af},{ne},{lr},{lb},{lv},{cf},{ly},{it},{uk},{se},{um},{ru},{sa},{cn},{ae},{uy},{uz},{va},{ve},{vi},{gq},{tj},{lv},{eh},{eh},{zw},{sd},{iq},{sk},{za},{lk},{sd},{sz},{tz},{to},{tn},{tv},{ug},{il},{ir},{tm},{kr},{sy},{az},{tr},{vn},{gq},{am},{kg},{kz},{by},{ua},{uz},{tj},{ir},{lb},{mm},{na},{np},{ps},{bd},{ph},{pl},{pt},{qa},{sm},{ly},{pr},{ye},{??} StrictNodes 1" > $_torrc_config.$number
+    echo "ExitNodes {hk},{ph},{tj},{tw},{th},{kp},{jp},{my},{mk},{ro},{vg},{br},{lc},{ge},{gh},{co},{cm},{dm},{do},{gp},{jm},{jo},{ke},{md},{kp},{mg},{pk},{nc},{rs},{pg},{gt},{ec},{ad},{si},{sb},{py},{pe},{lk},{tz},{ug},{vn},{wf},{cr},{sl},{ni},{zm},{tz},{sr},{kw},{sn},{kh},{bd},{id},{ai},{gy} StrictNodes 1" >> $_torrc_config.$number
     echo "User tor" >> $_torrc_config.$number
     echo "Sandbox 1" >> $_torrc_config.$number
     echo "HardwareAccel 1" >> $_torrc_config.$number
     echo "BandwidthBurst 1547483647" >> $_torrc_config.$number
     echo "BandwidthRate 1547483647" >> $_torrc_config.$number
     #echo "ConnLimit $(ulimit -H -n)" >> $_torrc_config.$number
-    echo "NewCircuitPeriod 7" >> $_torrc_config.$number
-    cp -rp "/var/lib/tor" "/var/lib/tor.$number"
+    echo "NewCircuitPeriod 90" >> $_torrc_config.$number
+    mkdir /var/lib/tor.$number &> /dev/null
+    mount -t tmpfs tmpfs /var/lib/tor.$number -o size=35m &> /dev/null
+    cp -rp "/var/lib/tor" "/var/lib/tor.$number" &> /dev/null
     echo "DataDirectory /var/lib/tor.$number" >> $_torrc_config.$number
     echo "SocksPort 10.0.0.$ip_addr:$number" >> $_torrc_config.$number
     ip_addr_list="$ip_addr_list 10.0.0.$ip_addr:$number"
@@ -503,3 +506,5 @@ own_params() {
 
 
 __main__ "${@}"
+
+
