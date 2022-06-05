@@ -1,0 +1,6 @@
+# Ignore Config
+.test-config-files
+
+# Ignore Test Files and TODO plans and refactor-/code- changing 
+.code-tests-area
+.brainstorming-area
