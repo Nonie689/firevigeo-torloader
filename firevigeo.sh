@@ -84,7 +84,7 @@ check_root() {
     if [[ "${UID}" -ne 0 ]]; then
         echo "Please run this program as a root!"
 	echo 
-	if ! $(echo $0|grep .sh); then
+	if ! $(echo $0|grep firevigeo.sh); then
 	  echo "Alternative add SETUID with:"
 	  echo
 	  echo "chown root:root $0"
