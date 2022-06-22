@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/usr/bin/bash
 
 ###################################################################################
 #                                                                                 #
@@ -83,6 +83,13 @@ verbose_mode="false"
 check_root() {
     if [[ "${UID}" -ne 0 ]]; then
         echo "Please run this program as a root!"
+	echo 
+	echo "Alternative add SETUID with:"
+	echo
+	echo "chown root:root $0"
+	echo "chmod u+s $0"
+	echo "chmod u+x $0"
+
 	exit 121
     fi
 }

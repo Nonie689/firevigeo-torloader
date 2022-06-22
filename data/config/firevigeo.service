@@ -4,7 +4,7 @@ After=network-online.target
 
 [Service]
 Type=simple
-ExecStart=firevigeo-prepare -s
+ExecStart=firevigeo -s
 Restart=on-failure
 RestartSec=2s
 
