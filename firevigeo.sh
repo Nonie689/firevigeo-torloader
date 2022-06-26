@@ -264,7 +264,7 @@ start_tor_servers() {
     echo "NewCircuitPeriod 90" >> $_torrc_config.$number
     mkdir /var/lib/tor.$number &> /dev/null
     mount -t tmpfs tmpfs /var/lib/tor.$number -o size=35m &> /dev/null
-    cp -rp "/var/lib/tor" "/var/lib/tor.$number" &> /dev/null
+    #cp -rp "/var/lib/tor" "/var/lib/tor.$number" &> /dev/null
     chown tor "/var/lib/tor.$number"
     echo "DataDirectory /var/lib/tor.$number" >> $_torrc_config.$number
     echo "SocksPort 10.0.0.$ip_addr:$number" >> $_torrc_config.$number
