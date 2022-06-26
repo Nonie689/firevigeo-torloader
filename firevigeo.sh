@@ -72,7 +72,7 @@ export reset="$(tput sgr0)"
 print_version() {
     printf "%s\\n" "${prog_name} ${version}"
     printf "%s\\n\n" "${signature}"
-    printf "%s\\n" "\License GPLv3: GNU GPL version 3 or later <https://gnu.org/licenses/gpl.html>"
+    printf "%s\\n" "License GPLv3: GNU GPL version 3 or later <https://gnu.org/licenses/gpl.html>"
     printf "%s\\n" "This is free software: you are free to change and redistribute it."
     printf "%s\\n\n" "There is NO WARRANTY, to the extent permitted by law."
 }
@@ -178,9 +178,15 @@ done < <(cat ${basename}/country_codes.lst | awk -F"[{}]" '{print $2}')
 
 start_tor_servers() {
   # Killall runnig tor processes if existing!
-  for tor_pid in $(ps aux | grep -E "tor -f /etc/tor/torrc\." | grep -v "grep" | awk '{print $2}'); do
-    kill $tor_pid
+  for tor_pid in $(ps aux | grep -E "tor -f /etc/tor/torrc.*" | grep -v "grep" | awk '{print $2}'); do
+     kill $tor_pid
   done
+
+  # Umount all tmpfs folders for /var/lib/tor.*
+  for tor_tmpfs in $(df -ha  2> /dev/null | grep /var/lib/tor | awk '{ print $6 }'); do
+    umount $tor_tmpfs
+  done
+
   modprobe dummy &> /dev/null
   start=$1
   end=$2
@@ -444,8 +450,14 @@ own_params() {
           echo "To much parameters are given!"
           exit 9
         fi
-        for tor_pid in $(ps aux | grep -E "tor -f /etc/tor/torrc\." | grep -v "grep" | awk '{print $2}'); do
-          kill $tor_pid
+
+        # Killall runnig tor processes if existing!
+        for tor_pid in $(ps aux | grep -E "tor -f /etc/tor/torrc.*" | grep -v "grep" | awk '{print $2}'); do
+           kill $tor_pid
+        done
+        # Umount all tmpfs folders for /var/lib/tor.*
+        for tor_tmpfs in $(df -ha  2> /dev/null | grep /var/lib/tor | awk '{ print $6 }'); do
+           umount $tor_tmpfs
         done
 
         for net_dev in $(ip a | grep -E "DOWN ."| grep default | awk '{print $2}' | awk -F':' '{print $1}'); do
