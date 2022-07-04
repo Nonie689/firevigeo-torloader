@@ -4,3 +4,7 @@
 # Ignore Test Files and TODO plans and refactor-/code- changing 
 .code-tests-area
 .brainstorming-area
+
+# Ignore make files trash
+firevigeo.sh.x.c
+firevigeo

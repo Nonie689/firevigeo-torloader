@@ -365,7 +365,7 @@ start_tor_servers() {
      pidof redsocks &> /dev/null || echo "Info -- Redsocks daemon is not running! Redsocks is required! Please don't forget to start this daemon after done this!" && echo
      pidof go-dispatch-proxy &> /dev/null || echo "Info -- Go-dispatch-proxy is not running! Go-dispatch-proxy is required! Please don't forget to start this after done this!" && echo
 
-  echo "Finished custom systm configuration!"
+  echo "Finished custom system configuration!"
   echo
   echo " -- Some additionaly infos for user --"
   echo
