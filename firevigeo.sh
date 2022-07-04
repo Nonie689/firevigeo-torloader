@@ -4,7 +4,7 @@
 #                                                                                 #
 # firevigeo                                                                       #
 #                                                                                 #
-# version: 0.8.1                                                                  #
+# version: 0.8.2                                                                  #
 #                                                                                 #
 # A tool to start multiple tor proxys with transparent loadbalancing feature!     #
 # This tool redirect the complete traffic trough loadbalanced tor clients, with   #
@@ -328,18 +328,12 @@ start_tor_servers() {
   ip link set dev ${default_ifname} down &> /dev/null
   echo "Unload currently used iptables.rules!"
 
-  while true ; do
-    if test `iptables --list | wc -l` -ne 8 ; then 
-      reset_iptables
-    else
-     break
-    fi
-  done
+  reset_iptables
      # Save iptables.rule, if not exist in system settings folder!
      if test ! -f  /etc/iptables/redsocks-go-balanced.rules && ! test `cmp --silent "${basename}/data/config/redsocks.rules"  "/etc/iptables/redsocks-go-balanced.rules"` ; then echo "Save redsocks iptables rules!";cp -f "${basename}/data/config/redsocks.rules"  "/etc/iptables/redsocks-go-balanced.rules"; fi
      # Load iptables
      echo "Loading new custom iptables rules!"
-     cat /etc/iptables/redsocks-go-balanced.rules | iptables-restore  -c -w 2 &> /dev/null
+     cat /etc/iptables/redsocks-go-balanced.rules | iptables-restore -c -w 2 &> /dev/null
      if [ "$?" -ne 0 ] ; then
        echo "Error! - Failed to load new custom iptables rules!"
        echo "Default Network are still disabled!"
@@ -351,11 +345,6 @@ start_tor_servers() {
      else
        ip addr add default_ip_addr brd + dev ${default_ifname} &> /dev/null; ip link set dev ${default_ifname} up &> /dev/null 
      fi
-
-     iptables -A INPUT -p udp -m udp --dport 137 -j ACCEPT
-     iptables -A INPUT -p udp -m udp --dport 138 -j ACCEPT
-     iptables -A INPUT -p tcp -m tcp --dport 139 -j ACCEPT
-     iptables -A INPUT -p tcp -m tcp --dport 445 -j ACCEPT
 
      # Wait for real iptables load finish!
      sleep 0.5
@@ -382,14 +371,20 @@ start_tor_servers() {
 
 
 reset_iptables() {
-     iptables -F
-     iptables -X
-     iptables -t nat -F
-     iptables -t nat -X
-     iptables -P INPUT ACCEPT
-     iptables -P FORWARD ACCEPT
-     iptables -P OUTPUT ACCEPT
-     sleep 0.5
+  while true ; do
+     if test `iptables --list | wc -l` -ne 8 ; then
+        iptables -F
+        iptables -X
+        iptables -t nat -F
+        iptables -t nat -X
+        iptables -P INPUT ACCEPT
+        iptables -P FORWARD ACCEPT
+        iptables -P OUTPUT ACCEPT
+        sleep 0.5
+      else
+        break
+     fi
+   done
 }
 
 
