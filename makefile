@@ -7,10 +7,16 @@ PREFIX := /usr/
 
 all: 
 	shc -S -f firevigeo.sh -o firevigeo
+	\chown root:root firevigeo
+	\chmod u+s firevigeo
+	\chmod u+x firevigeo
 
 clean :
 	\rm *.x.c
 
+cleanall :
+	\rm firevigeo
+	\rm *.x.c
 #install:
 #	chown root:root firevigeo
 #	chmod u+s firevigeo

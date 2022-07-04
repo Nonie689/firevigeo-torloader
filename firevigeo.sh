@@ -179,14 +179,16 @@ done < <(cat ${basename}/country_codes.lst | awk -F"[{}]" '{print $2}')
 start_tor_servers() {
   # Killall runnig tor processes if existing!
   for tor_pid in $(ps aux | grep -E "tor -f /etc/tor/torrc.*" | grep -v "grep" | awk '{print $2}'); do
-     kill $tor_pid
+     kill $tor_pid &> /dev/null && echo Kill TOR-PID: $tor_pid
   done
 
+  sleep 1
   # Umount all tmpfs folders for /var/lib/tor.*
   for tor_tmpfs in $(df -ha  2> /dev/null | grep /var/lib/tor | awk '{ print $6 }'); do
     umount $tor_tmpfs
   done
 
+  echo
   modprobe dummy &> /dev/null
   start=$1
   end=$2
@@ -453,8 +455,10 @@ own_params() {
 
         # Killall runnig tor processes if existing!
         for tor_pid in $(ps aux | grep -E "tor -f /etc/tor/torrc.*" | grep -v "grep" | awk '{print $2}'); do
-           kill $tor_pid
+           kill $tor_pid &> /dev/null && echo Kill TOR-PID: $tor_pid
         done
+
+        sleep 1
         # Umount all tmpfs folders for /var/lib/tor.*
         for tor_tmpfs in $(df -ha  2> /dev/null | grep /var/lib/tor | awk '{ print $6 }'); do
            umount $tor_tmpfs
