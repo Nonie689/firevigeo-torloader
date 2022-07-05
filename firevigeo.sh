@@ -49,7 +49,7 @@
 #
 # program information
 readonly prog_name="firevigeo"
-readonly version="0.8.1"
+readonly version="0.8.2"
 readonly signature="Copyright (C) 2022 Nonie689"
 readonly git_url="https://github.com/Nonie689/firevigeo-torloader"
 
@@ -222,6 +222,10 @@ start_tor_servers() {
   dnsport=53
   ip_addr=10
 
+  ip link add veth1 type dummy  &> /dev/null
+  ip addr add 10.0.0.10/24 brd + dev veth1 label veth1:0  &> /dev/null
+  ip link set dev veth1 up  &> /dev/null
+
   # Saved new hashed pass as readable file at: /etc/tor/hashed_pass
   echo "Saved new Tor Control password store file at: /etc/tor/hashed_pass" && echo && echo -e "##############################################################################################\n####### Passwords for all tor  processed started with firevigeo! #############################\n####### Generated on:  $_init_date for Tor Proxy Number from $start till $end ! ####\n############################################################################################\n####### Number of Tor Proxy clients = ${number_torsrv_wanted}! ##################################################\n# Readable Tor password #########\npass_plain=$_tor_pass_readable\n\n# Hash-encoded Tor password #####\npass_hash=$_tor_hashpass" > /etc/tor/hashed_pass && chmod 600  /etc/tor/hashed_pass
 
@@ -247,7 +251,7 @@ start_tor_servers() {
 
     # Create  proxychain config foreach tor proxy device with new settings !
     cp "${basename}/data/config/proxychains.conf" $_proxychain_config.$counter_rw.conf
-    echo "socks4 10.0.0.$ip_addr $number" >> $_proxychain_config.$counter_rw.conf
+    echo "socks4 10.0.0.10 $number" >> $_proxychain_config.$counter_rw.conf
 
     # Add  custom conkycode to conkyrc  tor displaying tor proxy stuff!
     echo \${goto 12}\${voffset 0}\${font Ubuntu:style=Bold:size=8}Tor $counter_rw IP: \${alignr}\${color2}\${execp proxychains -q -f $_proxychain_config.$counter_rw.conf 'curl -s https://myip.privex.io/index.json| jq  -r .ip' }\${color} >> /etc/conky/cpu-colors-edit/.conkyrc
@@ -269,22 +273,22 @@ start_tor_servers() {
     #cp -rp "/var/lib/tor" "/var/lib/tor.$number" &> /dev/null
     chown tor "/var/lib/tor.$number"
     echo "DataDirectory /var/lib/tor.$number" >> $_torrc_config.$number
-    echo "SocksPort 10.0.0.$ip_addr:$number" >> $_torrc_config.$number
-    ip_addr_list="$ip_addr_list 10.0.0.$ip_addr:$number"
+    echo "SocksPort 10.0.0.10:$number" >> $_torrc_config.$number
+    ip_addr_list="$ip_addr_list 10.0.0.10:$number"
     echo "ControlPort $newcontrolport" >> $_torrc_config.$number
     echo "HashedControlPassword $_tor_hashpass" >> $_torrc_config.$number
     # Enable only at the first tor client a DNS service!
     if test $counter -eq 0 ; then
-      echo "DNSPort $dnsport" >> $_torrc_config.$number
+      echo "DNSPort 127.0.0.1:$dnsport" >> $_torrc_config.$number
     fi
 
-    ip link add veth$counter type dummy  &> /dev/null 
-    ip addr add 10.0.0.$ip_addr/24 brd + dev veth$counter label veth$counter:0  &> /dev/null 
-    ip link set dev veth$counter up  &> /dev/null
+    #ip link add veth$counter type dummy  &> /dev/null 
+    #ip addr add 10.0.0.$ip_addr/24 brd + dev veth$counter label veth$counter:0  &> /dev/null 
+    #ip link set dev veth$counter up  &> /dev/null
 
     let counter=counter+1
     let counter_rw=counter_rw+1
-    let ip_addr=ip_addr+1
+    #let ip_addr=ip_addr+1
 
     #Start tor proxy router for virtual  network card! Then check the  execution succeed!
     tor -f $_torrc_config.$number &> /dev/null & 
