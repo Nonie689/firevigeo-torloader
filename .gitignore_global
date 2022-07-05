@@ -6,5 +6,5 @@
 .brainstorming-area
 
 # Ignore make files trash
-firevigeo.sh.x.c
-firevigeo
+.firevigeo.sh.x.c
+.firevigeo
