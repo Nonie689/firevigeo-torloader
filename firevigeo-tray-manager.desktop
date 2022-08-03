@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=Firevigeo Tray Manager
+GenericName=Firevigeo Tray Manager
+Comment=Change firevigeo settings faster!
+Exec=firevigeo-tray.py
+Terminal=false
+Type=Application
+StartupNotify=true
+MimeType=text/plain;

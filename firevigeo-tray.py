@@ -1,3 +1,4 @@
+#!/usr/bin/python
 # -*- coding: UTF-8 -*-
 import wx
 from pystray import MenuItem as item
@@ -43,7 +44,10 @@ def close():
     print("Close Firevigeo Control Tray!")
     quit()
 
-image = Image.open("icon.png")
+if not os.path.exists("/usr/share/firevigeo/icon.png"):
+	image = Image.open("icon.png")
+else:
+	image = Image.open("/usr/share/firevigeo/icon.png")
 menu = (item('Start firevigeo', start), item('Stop firevigeo', stop), item('Settings', settings), item('Close Tray', close))
 icon = pystray.Icon("Firevigeo Control Tray", image, "Firevigeo-Control-Tray", menu)
 

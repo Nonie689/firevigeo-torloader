@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Firevigeo Tray Manager
+Exec=firevigeo-tray.py
+NoDisplay=true
+AutostartCondition=GSettings tray-enabled
+X-GNOME-AutoRestart=true
+X-GNOME-Autostart-Phase=Initialization
