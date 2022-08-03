@@ -49,7 +49,7 @@
 #
 # program information
 readonly prog_name="firevigeo"
-readonly version="0.8.2"
+readonly version="0.9.1"
 readonly signature="Copyright (C) 2022 Nonie689"
 readonly git_url="https://github.com/Nonie689/firevigeo-torloader"
 
@@ -83,16 +83,8 @@ verbose_mode="false"
 check_root() {
     if [[ "${UID}" -ne 0 ]]; then
         echo "Please run this program as a root!"
-	echo 
-	if ! $(echo $0|grep firevigeo.sh); then
-	  echo "Alternative add SETUID with:"
-	  echo
-	  echo "chown root:root $0"
-	  echo "chmod u+s $0"
-	  echo "chmod u+x $0"
-	fi
-
-	exit 121
+    	  echo
+        exit 121
     fi
 }
 
@@ -106,8 +98,6 @@ __init__ () {
 
 param_error=false
 
-# Show programm info!
-print_version
 
 
 # Check depencies
@@ -152,10 +142,12 @@ shuf -i 10000-1000000 -n1
 }
 
 function __main__() {
-  ###  Here is the main construct of this tool! 
-  check_root
-  __init__
+  ###  Here is the main construct of this tool!
 
+
+  # Show programm info!
+
+  print_version
   own_params "${@}"
 
 }
@@ -167,16 +159,40 @@ get_date_time() {
 
 
 start_tor_servers_by_country() {
-countr_count_num=60001
-while read -r country_line
-do
-    country_port=$country_line
-    let countr_count_num=countr_count_num+1
-done < <(cat ${basename}/country_codes.lst | awk -F"[{}]" '{print $2}')
+country_count_num=60001
+for country_port in $(cat ${doc_dir}/country_codes.lst | awk -F"[{}]" '{print $2}');do
+    let countrycontrolport=country_count_num+1000
+    cp $_torrc_config $_torrc_config.$country_port
+    echo "ExitNodes {$country_port} StrictNodes 1" >> $_torrc_config.$country_port
+    echo "User tor" >> $_torrc_config.$country_port
+    echo "Sandbox 1" >> $_torrc_config.$country_port
+    echo "HardwareAccel 1" >> $_torrc_config.$country_port
+    echo "BandwidthBurst 1547483647" >> $_torrc_config.$country_port
+    echo "BandwidthRate 1547483647" >> $_torrc_config.$country_port
+    #echo "ConnLimit $(ulimit -H -n)" >> $_torrc_config.$number
+    echo "NewCircuitPeriod 90" >> $_torrc_config.$country_port
+    mkdir /var/lib/tor.$country_port &> /dev/null
+    mount -t tmpfs tmpfs /var/lib/tor.$country_port -o size=35m &> /dev/null
+    #cp -rp "/var/lib/tor" "/var/lib/tor.$number" &> /dev/null
+    chown tor:tor "/var/lib/tor.$country_port"
+    echo "DataDirectory /var/lib/tor.$country_port" >> $_torrc_config.$country_port
+    echo "SocksPort 10.0.0.10:$country_count_num" >> $_torrc_config.$country_port
+    echo "ControlPort $countrycontrolport" >> $_torrc_config.$country_port
+    echo "HashedControlPassword $_tor_hashpass" >> $_torrc_config.$country_port
+
+
+    #ip link add veth$counter type dummy  &> /dev/null
+    #ip addr add 10.0.0.$ip_addr/24 brd + dev veth$counter label veth$counter:0  &> /dev/null
+    #ip link set dev veth$counter up  &> /dev/null
+
+    let country_count_num=country_count_num+1
+done
 
 }
 
 start_tor_servers() {
+  check_root
+  __init__
   # Killall runnig tor processes if existing!
   for tor_pid in $(ps aux | grep -E "tor -f /etc/tor/torrc.*" | grep -v "grep" | awk '{print $2}'); do
      kill $tor_pid &> /dev/null && echo Kill TOR-PID: $tor_pid
@@ -192,10 +208,18 @@ start_tor_servers() {
   modprobe dummy &> /dev/null
   start=$1
   end=$2
-  
+
   readonly number_torsrv_wanted="$(expr $end -  $start)"
   readonly script="$0"
   readonly basename="$(dirname $script)"
+
+  if test -d /usr/share/firevigeo/data; then
+     readonly data_dir=/usr/share/firevigeo/
+     readonly doc_dir=/usr/share/doc/firevigeo/
+  else
+     readonly data_dir=$basename
+     readonly doc_dir=$basename
+  fi
 
   echo "Change DNS service to use Tor DNS service!"
   echo "nameserver 127.0.0.1" > /etc/resolv.conf
@@ -211,8 +235,8 @@ start_tor_servers() {
   # Variables related to the log file. Divided into three parts due
   # to the better possibility of manipulation for the user.
   readonly _log_directory="/var/log"
-  readonly _log_file="firevigeo-prepare.${_cdate}.log"
-  readonly _log_stdout="${_log_directory}/firevigeo-prepare.stdout.log"
+  readonly _log_file="firevigeo.${_cdate}.log"
+  readonly _log_stdout="${_log_directory}/firevigeo.stdout.log"
   readonly _log_path="${_log_directory}/${_log_file}"
   readonly _torrc_config="/etc/tor/torrc"
   readonly _proxychain_config="/etc/proxychains"
@@ -231,31 +255,37 @@ start_tor_servers() {
 
    # Copy uncomplete conky config to  systemfolder!    ----    Using  files from script  ."/data/config"  folder
    if ! test -d /etc/conky/cpu-colors-edit/ ; then
-     echo "Create system settings folder for conkyrc file!" 
+     echo "Create system settings folder for conkyrc file!"
      mkdir -p "/etc/conky/cpu-colors-edit/" 2> /dev/null
    fi
 
    # Generate custom conky and proxychain setting section!
-   echo "Generate custom conky and proxychains settings!" 
-   cp -f "${basename}/data/config/conkyrc" "/etc/conky/cpu-colors-edit/.conkyrc"
+   echo "Generate custom conky and proxychains settings!"
+   cp -f "${data_dir}/data/config/conkyrc" "/etc/conky/cpu-colors-edit/.conkyrc"
 
 
    # Generate for each Tor client custom settings and start the Tor Proxy clients!
    echo -e "\nGenerate for each Tor client custom settings and start the Tor Proxy clients!"
-
+   if ! $(pidof stubby &> /dev/null); then
+     echo
+     echo "You are not using stubby DNS-Resolver!"
+     echo "Please install it to use DNS over TLS!"
+     echo
+     echo "see: https://dnsprivacy.org/wiki/display/DP/DNS+Privacy+Daemon+-+Stubby"
+     echo
+   fi
    ### Run  forloop and create custom configs for conky and proxychain!
-   for number in $(seq $start $end)
-    do
-	newcontrolport="$(expr $number + 1100)"
+   for number in $(seq $start $end) ; do
+   	newcontrolport="$(expr $number + 1100)"
     printf "Generate Tor socks: $number "
 
     # Create  proxychain config foreach tor proxy device with new settings !
-    cp "${basename}/data/config/proxychains.conf" $_proxychain_config.$counter_rw.conf
+    cp "${data_dir}/data/config/proxychains.conf" $_proxychain_config.$counter_rw.conf
     echo "socks4 10.0.0.10 $number" >> $_proxychain_config.$counter_rw.conf
 
     # Add  custom conkycode to conkyrc  tor displaying tor proxy stuff!
     echo \${goto 12}\${voffset 0}\${font Ubuntu:style=Bold:size=8}Tor $counter_rw IP: \${alignr}\${color2}\${execp proxychains -q -f $_proxychain_config.$counter_rw.conf 'curl -s https://myip.privex.io/index.json| jq  -r .ip' }\${color} >> /etc/conky/cpu-colors-edit/.conkyrc
-  
+
     # Set torrc config
     # Add foreach Tor-Gateway device extra torrc options with new custom settings!!
 
@@ -271,19 +301,19 @@ start_tor_servers() {
     mkdir /var/lib/tor.$number &> /dev/null
     mount -t tmpfs tmpfs /var/lib/tor.$number -o size=35m &> /dev/null
     #cp -rp "/var/lib/tor" "/var/lib/tor.$number" &> /dev/null
-    chown tor "/var/lib/tor.$number"
+    chown tor:tor "/var/lib/tor.$number"
     echo "DataDirectory /var/lib/tor.$number" >> $_torrc_config.$number
     echo "SocksPort 10.0.0.10:$number" >> $_torrc_config.$number
     ip_addr_list="$ip_addr_list 10.0.0.10:$number"
     echo "ControlPort $newcontrolport" >> $_torrc_config.$number
     echo "HashedControlPassword $_tor_hashpass" >> $_torrc_config.$number
     # Enable only at the first tor client a DNS service!
-    if test $counter -eq 0 ; then
+    if test $counter -eq 0 && ! $(pidof stubby &> /dev/null) ; then
       echo "DNSPort 127.0.0.1:$dnsport" >> $_torrc_config.$number
     fi
 
-    #ip link add veth$counter type dummy  &> /dev/null 
-    #ip addr add 10.0.0.$ip_addr/24 brd + dev veth$counter label veth$counter:0  &> /dev/null 
+    #ip link add veth$counter type dummy  &> /dev/null
+    #ip addr add 10.0.0.$ip_addr/24 brd + dev veth$counter label veth$counter:0  &> /dev/null
     #ip link set dev veth$counter up  &> /dev/null
 
     let counter=counter+1
@@ -291,7 +321,7 @@ start_tor_servers() {
     #let ip_addr=ip_addr+1
 
     #Start tor proxy router for virtual  network card! Then check the  execution succeed!
-    tor -f $_torrc_config.$number &> /dev/null & 
+    tor -f $_torrc_config.$number &> /dev/null &
 
     if [ $? -eq 0 ] ; then
       echo " -- Tor $counter started!"
@@ -312,7 +342,7 @@ start_tor_servers() {
      _dir="${UHOME}/${u}"
      if [ -d "$_dir" ]
      then
-	 mkdir -p $_dir/.conky/cpu-colors-edit 2> /dev/null 
+	 mkdir -p $_dir/.conky/cpu-colors-edit 2> /dev/null
          cmp --silent -- /etc/conky/cpu-colors-edit/.conkyrc "$_dir/.conky/cpu-colors-edit/.conkyrc" || cp -f /etc/conky/cpu-colors-edit/.conkyrc "$_dir/.conky/cpu-colors-edit/" && chown $(id -un $u):$(id -gn $u) "$_dir/.conky/cpu-colors-edit/.conkyrc"
      fi
   done
@@ -328,13 +358,13 @@ start_tor_servers() {
   for net_dev in $(ip a | grep -E "UP ."| grep default | awk '{print $2}' | awk -F':' '{print $1}'); do
      ip link set dev $net_dev down &> /dev/null
   done
-  
+
   ip link set dev ${default_ifname} down &> /dev/null
   echo "Unload currently used iptables.rules!"
 
   reset_iptables
      # Save iptables.rule, if not exist in system settings folder!
-     if test ! -f  /etc/iptables/redsocks-go-balanced.rules && ! test `cmp --silent "${basename}/data/config/redsocks.rules"  "/etc/iptables/redsocks-go-balanced.rules"` ; then echo "Save redsocks iptables rules!";cp -f "${basename}/data/config/redsocks.rules"  "/etc/iptables/redsocks-go-balanced.rules"; fi
+     if test ! -f  /etc/iptables/redsocks-go-balanced.rules && ! test $(cmp --silent "${data_dir}/data/config/redsocks.rules"  "/etc/iptables/redsocks-go-balanced.rules") ; then echo "Save redsocks iptables rules!";cp -f "${data_dir}/data/config/redsocks.rules"  "/etc/iptables/redsocks-go-balanced.rules"; fi
      # Load iptables
      echo "Loading new custom iptables rules!"
      cat /etc/iptables/redsocks-go-balanced.rules | iptables-restore -c -w 2 &> /dev/null
@@ -347,7 +377,7 @@ start_tor_servers() {
        done
        exit 22
      else
-       ip addr add default_ip_addr brd + dev ${default_ifname} &> /dev/null; ip link set dev ${default_ifname} up &> /dev/null 
+       ip addr add default_ip_addr brd + dev ${default_ifname} &> /dev/null; ip link set dev ${default_ifname} up &> /dev/null
      fi
 
      # Wait for real iptables load finish!
@@ -357,8 +387,8 @@ start_tor_servers() {
        echo "Iptables Loading done! -- System is now complete proxyfing traffic by loadbalancer!"
      fi
 
-     pidof redsocks &> /dev/null || echo "Info -- Redsocks daemon is not running! Redsocks is required! Please don't forget to start this daemon after done this!" && echo
-     pidof go-dispatch-proxy &> /dev/null || echo "Info -- Go-dispatch-proxy is not running! Go-dispatch-proxy is required! Please don't forget to start this after done this!" && echo
+     pidof redsocks &> /dev/null && echo "Redsocks daemon already runnung!" || echo -n "Redsocks daemon isn't running!\n Starting redsocks daemon!" redsocks -c /etc/redsocks.conf && echo "Redsocks daemon is running now!" && echo
+     pidof go-dispatch-proxy &> /dev/null || echo "Info -- go-dispatch-proxy is not running! go-dispatch-proxy is required! Please don't forget to start this after done this!" && echo
 
   echo "Finished custom system configuration!"
   echo
@@ -410,7 +440,6 @@ param_num_check() {
 }
 
 _help_(){
-print_version
 echo "firevigeo-prepare [OPTIONS]"
 echo
 echo "OPTIONS:"
@@ -418,7 +447,6 @@ echo -e "   -h|--help                              Shows this help message!"
 echo -e "   -k|--kill                              Kills all Tor Proxys!"
 echo -e "   -r|--runtime-check                     Checks firevigeo runtime state status!"
 echo -e "   -s|--start    #Start_Port #End_Port    Start firevigeo Tor-Proxys [optional own Port range]!"
-echo -e "   -n|--new-id   #Start_Port #End_Port    Start firevigeo Tor-Proxys [optional own Port range]!"
 
 }
 
@@ -445,13 +473,14 @@ own_params() {
         _help_
         exit 0
         shift ;;
-
       -k|--kill)
         if [[ "$#" -gt 1 ]]; then
           echo "To much parameters are given!"
           exit 9
         fi
 
+        check_root
+        __init__
         # Killall runnig tor processes if existing!
         for tor_pid in $(ps aux | grep -E "tor -f /etc/tor/torrc.*" | grep -v "grep" | awk '{print $2}'); do
            kill $tor_pid &> /dev/null && echo Kill TOR-PID: $tor_pid
@@ -511,11 +540,6 @@ own_params() {
         fi
         shift ;;
 
-      -n|--new-id)
-        param_num_check $1 $start $end
-        start_tor_servers $start $end
-        shift ;;
-
       -s|--start)
         param_num_check $1 $start $end
         start_tor_servers $start $end
@@ -524,12 +548,9 @@ own_params() {
       *)
         echo Error Invalid Option!
         exit 1
-        ;;
     esac
   fi
 }
 
 
 __main__ "${@}"
-
-
