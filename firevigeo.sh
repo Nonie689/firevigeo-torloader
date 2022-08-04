@@ -221,9 +221,6 @@ start_tor_servers() {
      readonly doc_dir=$basename
   fi
 
-  echo "Change DNS service to use Tor DNS service!"
-  echo "nameserver 127.0.0.1" > /etc/resolv.conf
-
   #  Early inititialisation part -  Setting up start variables with needet init values!
   # Stores the executing start date.
   readonly _cdate="$(date +%Y%m%d)"
@@ -243,7 +240,7 @@ start_tor_servers() {
 
   counter=0
   counter_rw=1
-  dnsport=53
+  readonly dnsport=53
   ip_addr=10
 
   ip link add veth1 type dummy  &> /dev/null
@@ -389,6 +386,9 @@ start_tor_servers() {
 
      pidof redsocks &> /dev/null && echo "Redsocks daemon already runnung!" || echo -n "Redsocks daemon isn't running!\n Starting redsocks daemon!" redsocks -c /etc/redsocks.conf && echo "Redsocks daemon is running now!" && echo
      pidof go-dispatch-proxy &> /dev/null || echo "Info -- go-dispatch-proxy is not running! go-dispatch-proxy is required! Please don't forget to start this after done this!" && echo
+
+  echo "Change DNS service to use 127.0.0.1!"
+  echo "nameserver 127.0.0.1" > /etc/resolv.conf
 
   echo "Finished custom system configuration!"
   echo
