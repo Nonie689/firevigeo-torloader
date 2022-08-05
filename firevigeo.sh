@@ -172,7 +172,9 @@ for country_port in $(cat ${doc_dir}/country_codes.lst | awk -F"[{}]" '{print $2
     #echo "ConnLimit $(ulimit -H -n)" >> $_torrc_config.$number
     echo "NewCircuitPeriod 90" >> $_torrc_config.$country_port
     mkdir /var/lib/tor.$country_port &> /dev/null
-    mount -t tmpfs tmpfs /var/lib/tor.$country_port -o size=35m &> /dev/null
+    if ! test -z cached-microdesc-consensus; then
+       mount -t tmpfs tmpfs /var/lib/tor.$country_port -o size=35m &> /dev/null
+    fi
     #cp -rp "/var/lib/tor" "/var/lib/tor.$number" &> /dev/null
     chown tor:tor "/var/lib/tor.$country_port"
     echo "DataDirectory /var/lib/tor.$country_port" >> $_torrc_config.$country_port
@@ -321,6 +323,14 @@ start_tor_servers() {
     tor -f $_torrc_config.$number &> /dev/null &
 
     if [ $? -eq 0 ] ; then
+      if test $counter -eq 1; then
+      sleep 5
+      fi
+        if $(which exclude-slow-tor-relays-ng &> /dev/null) ; then
+          exclude-slow-tor-relays-ng -d "/var/lib/tor.$start/" -i "$_torrc_config.$number"
+        else
+          ./exclude-slow-tor-relays-ng -d "/var/lib/tor.$start/" -i "$_torrc_config.$number"
+        fi
       echo " -- Tor $counter started!"
     else
       echo " -- Failed to start Tor!"
@@ -328,7 +338,6 @@ start_tor_servers() {
 
     # End of loop for creating custom new settings!
  done
-
 
    # Save conkyrc to users folder!
    UHOME="/home"
@@ -488,9 +497,9 @@ own_params() {
 
         sleep 1
         # Umount all tmpfs folders for /var/lib/tor.*
-        for tor_tmpfs in $(df -ha  2> /dev/null | grep /var/lib/tor | awk '{ print $6 }'); do
-           umount $tor_tmpfs
-        done
+        #for tor_tmpfs in $(df -ha  2> /dev/null | grep /var/lib/tor | awk '{ print $6 }'); do
+        #   umount $tor_tmpfs
+        #done
 
         for net_dev in $(ip a | grep -E "DOWN ."| grep default | awk '{print $2}' | awk -F':' '{print $1}'); do
           ip link set dev $net_dev up &> /dev/null

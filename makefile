@@ -26,6 +26,7 @@ install: firevigeo
 	\chmod u+x $(DESTDIR)$(PREFIX)/firevigeo
 	\install -Dm755 firevigeo-simple_test.sh $(DESTDIR)$(PREFIX)/firevigeo-simple_test
 	\install -Dm755 get_relay_max_bandwidth.py $(DESTDIR)$(PREFIX)/get_relay_max_bandwidth.py
+	\install -Dm755 exclude-slow-tor-relays-ng $(DESTDIR)$(PREFIX)/exclude-slow-tor-relays-ng
 	\cp -RT data/ /usr/share/firevigeo/data
 	\install -Dm644 icon.png /usr/share/firevigeo/icon.png
 	\install -Dm644 LICENSE /usr/share/licenses/firevigeo/LICENSE
@@ -47,3 +48,4 @@ uninstall:
 	\rm /usr/share/applications/firevigeo-tray.desktop
 	\rm $(DESTDIR)$(PREFIX)/get_relay_max_bandwidth.py
 	\rm /usr/share/firevigeo/icon.png
+	\rm $(DESTDIR)$(PREFIX)/exclude-slow-tor-relays-ng

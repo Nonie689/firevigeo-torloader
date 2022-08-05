@@ -1,0 +1,232 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+"""
+ exclude-slow-tor-relays
+ -----------------------
+
+ Generate a torrc file with an ExcludeNodes lines containing all relays whose
+ observed bandwidth is less than a given amount.
+
+ :source author:    Isis <isis@patternsinthevoid.net> 0x0A6A58A14B5946ABDE18E207A3ADB67A2CDB8B35
+ :co-author:        Nonie689 <nonie689[at]eclipso[dot]ch>
+ :version:   0.0.2
+ :license:   AGPLv3
+ :copyright: © 2022 Nonie689
+"""
+
+from __future__ import print_function
+from __future__ import unicode_literals
+
+import argparse
+import logging
+import os
+import sys
+
+try:
+    from stem.descriptor import parse_file
+    from stem.descriptor import router_status_entry
+except ImportError:
+    print("""\
+This script requires Stem. If you're on a Debian-based system, try installing\n
+the `python-stem` package. See https://stem.torproject.org/ for more info.""")
+except Exception:
+    print("There was an error importing Stem.")
+
+
+#: The minimum bandwidth a relay should have, in kilobytes. Relays with less
+#: than this amount of bandwidth will be added to the ExcludeNodes line and
+#: therefore not used by your Tor client. (default: 3000 KB/s)
+MINIMUM_BANDWIDTH = 3000
+
+#: The path to the directory which your Tor process stores data in. In your
+#: torrc file, this directory is given under the option `DataDirectory`. Please
+#: see `man (1) tor` for more information, including the default path.
+TOR_DATA_DIR = "/var/lib/tor"
+
+#: The path to Tor's init.d script (default: "/etc/init.d/tor-git")
+
+#: The names of various flavours of consensus files which we might find in the
+#: :data:`TOR_DATA_DIR`. These files should hold basic information on all the
+#: relays we know about, including bandwidth information. You probably don't
+#: need to change this setting.
+POTENTIAL_CONSENSII = ["cached-consensus", "cached-microdesc-consensus"]
+
+
+log = logging.getLogger()
+
+
+def _get_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-d', '--data-dir',
+                        help=("Path to Tor's DataDir (default: %s)"
+                              % TOR_DATA_DIR))
+    parser.add_argument('-c', '--consensus-file',
+                        help=("The filename of Tor's consensus file (default: "
+                              "%s)" % POTENTIAL_CONSENSII[-1]))
+    parser.add_argument('-b', '--min-bandwidth', type=int,
+                        help=("Relays under this bandwidth (in KB/s) will be "
+                              "excluded (default: %s KB/s)" % MINIMUM_BANDWIDTH))
+    parser.add_argument('-f', '--file',
+                        help=("The path to the file to write the new ExcludeNodes "
+                              "torrc to (default: DATA_DIR/torrc.exclude-nodes)"), default=TOR_DATA_DIR + "/torrc.exclude-nodes")
+    parser.add_argument('-i', '--in-place',
+                        help=("Edit the primary torrc file in place. Provide the"
+                              " path to the torrc file to edit in place"))
+    log_group = parser.add_argument_group(title='Logging',
+                                          description="Options and settings for logging")
+    log_group.add_argument('--stderr', action='store_true', help="Log to stderr")
+    log_group.add_argument('--stdout', action='store_true', help="Log to stdout")
+    log_group.add_argument('--logfile', help="Log to file")
+    log_group.add_argument('--loglevel', help="Log level", default="INFO",
+                           choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"])
+
+    args = parser.parse_args()
+    return args
+
+def create_exclude_nodes_line(fingerprints):
+    exclude_nodes = 'ExcludeNodes ' + ','.join(fingerprints) + '\n'
+    return exclude_nodes
+
+def find_slow_nodes(consensus, minimum_bandwidth):
+    consensus_file = open(consensus, 'rb')
+    descriptors = list(parse_file(consensus_file))
+    total_relays = len(descriptors)
+
+    consensus_file.close()
+
+    too_slow = []
+
+    for relay in descriptors:
+        if relay.bandwidth <= minimum_bandwidth:
+            too_slow.append(relay.fingerprint)
+            log.debug("Excluding %s with bandwidth=%s" %
+                      (relay.fingerprint, relay.bandwidth))
+        elif relay.is_unmeasured:
+            too_slow.append(relay.fingerprint)
+            log.debug("Excluding %s with unmeasured bandwidth=%s" %
+                      (relay.fingerprint, relay.bandwidth))
+
+    too_slow = ['$%s' % fingerprint for fingerprint in too_slow]
+    log.info("Excluding %s/%s relays with bandwidth <= %s KB/s."
+             % (len(too_slow), total_relays, minimum_bandwidth))
+
+    return too_slow
+
+def write_torrc(data_dir, lines):
+    filename = 'torrc.exclude-slow'
+    filepath = os.path.join(os.path.dirname(data_dir), filename)
+
+    stat = os.stat(data_dir)
+    uid = stat.st_uid
+    gid = stat.st_gid
+
+    with open(filepath, 'w') as fh:
+        fh.writelines(lines)
+        fh.flush()
+        os.fchown(fh.fileno(), uid, gid)
+
+    log.debug("Wrote ExcludeNodes line to new torrc file: %s" % filepath)
+
+    return filepath
+
+def write_torrc_in_place(torrc_path, exclude):
+    torrc_lines = []
+    orig_exclude_line = ''
+
+    with open(torrc_path) as fh:
+        for line in fh.readlines():
+            if line.lower().startswith('excludenodes'):
+                orig_exclude_line = line
+                excluded_nodes = line.strip().replace("ExcludeNodes ", "").split(',')
+                excluded_nodes.extend(exclude)
+                excluded_nodes = list(set(excluded_nodes))
+                excluded_nodes.sort(reverse=True)
+                log.debug("\nNew torrc Excluded Nodes: " + str(excluded_nodes))
+                line = create_exclude_nodes_line(excluded_nodes)
+
+
+            torrc_lines.append(line)
+
+        if not orig_exclude_line:
+            torrc_lines.append(exclude)
+
+    with open(torrc_path, 'w') as fh:
+        fh.writelines(torrc_lines)
+        fh.flush()
+
+    if orig_exclude_line:
+        log.debug("Overwrote ExcludeNodes line in torrc file: %s" % torrc_path)
+    else:
+        log.debug("Appended ExcludeNodes line to torrc file: %s" % torrc_path)
+
+    return torrc_path
+
+def main(args):
+    too_slow = []
+    data_dir = None
+    consensus = None
+    consensii = []
+    min_bandwidth = None
+
+    if args.logfile:
+        log.addHandler(logging.FileHandler(args.logfile))
+    elif args.stderr:
+        log.addHandler(logging.StreamHandler(sys.stderr))
+    elif args.stdout:
+        log.addHandler(logging.StreamHandler(sys.stdout))
+    else:
+        log.addHandler(logging.StreamHandler(sys.stdout))
+
+
+    if args.loglevel == "INFO":
+        log.setLevel(logging.INFO)
+    elif args.loglevel == "DEBUG":
+        log.setLevel(logging.DEBUG)
+    elif args.loglevel == "WARNING":
+        log.setLevel(logging.WARNING)
+    elif args.loglevel == "ERROR":
+        log.setLevel(logging.ERROR)
+    elif args.loglevel == "CRITICAL":
+        log.setLevel(logging.CRITICAL)
+
+
+    if args.consensus_file:
+        consensii.append(args.consensus_file)
+    consensii.extend(POTENTIAL_CONSENSII)
+
+    data_dir = args.data_dir if args.data_dir else TOR_DATA_DIR
+    min_bw = args.min_bandwidth if args.min_bandwidth else MINIMUM_BANDWIDTH
+    cur_uid = os.getuid()
+
+    if os.path.isdir(data_dir) and os.access(data_dir, os.R_OK):
+        for filename in consensii:
+            filepath = os.path.join(data_dir, filename)
+            if os.path.exists(filepath) and os.path.isfile(filepath):
+                if os.access(filepath, os.R_OK):
+                    consensus = filepath
+                    break
+                else:
+                    log.info("Your user (%s) can't read the consensus file %s."
+                             % (cur_uid, filepath))
+    else:
+        log.warning("Your user (%s) can't read Tor's DataDirectory (%s)."
+                 % (cur_uid, data_dir))
+
+    if not consensus:
+        log.error("Could not find or read consensus file.")
+        sys.exit(1)
+
+    too_slow = find_slow_nodes(consensus, min_bw)
+
+    if too_slow:
+        exclude_nodes = create_exclude_nodes_line(too_slow)
+        if args.in_place:
+            write_torrc_in_place(args.in_place, too_slow)
+        if args.file:
+            torrc = write_torrc(data_dir, exclude_nodes)
+
+    return exclude_nodes
+
+
+if __name__ == "__main__":
+    main(_get_args())
