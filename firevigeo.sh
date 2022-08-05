@@ -510,8 +510,10 @@ own_params() {
         echo "Unload currently used iptables.rules!"
         reset_iptables
         iptables-restore /etc/iptables/iptables.rules & > /dev/null && echo "Restarted iptables with default system firewall rules!"
-        echo "Change DNS service to use Google DNS service!"
-        echo "nameserver 8.8.8.8" > /etc/resolv.conf
+        if ! $(pidof stubby &> /dev/null); then
+          echo "Change DNS service to use Google DNS service!"
+          echo "nameserver 8.8.8.8" > /etc/resolv.conf
+        fi
         echo
         echo "Done!"
         shift ;;
