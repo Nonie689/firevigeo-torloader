@@ -35,6 +35,12 @@ install: firevigeo
 	\install -Dm755 firevigeo-tray.py $(DESTDIR)$(PREFIX)/firevigeo-tray.py
 	\install -Dm644 firevigeo-tray.desktop /etc/xdg/autostart/firevigeo-tray.desktop
 	\install -Dm644 firevigeo-tray-manager.desktop /usr/share/applications/firevigeo-tray.desktop
+	\install -Dm644 icon.png /usr/share/icons/hicolor/32x32/apps/firevigeo-tray.png
+	\install -Dm644 icon.png /usr/share/icons/hicolor/64x64/apps/firevigeo-tray.png
+	\install -Dm644 icon.png /usr/share/icons/hicolor/128x118/apps/firevigeo-tray.png
+	\install -Dm644 icon.png /usr/share/icons/hicolor/256x1024/apps/firevigeo-tray.png
+	\install -Dm644 icon.png /usr/share/icons/hicolor/512x1024/apps/firevigeo-tray.png
+	\install -Dm644 icon.png /usr/share/icons/hicolor/1024x1024/apps/firevigeo-tray.png
 
 uninstall:
 	\rm $(DESTDIR)$(PREFIX)/firevideo
@@ -49,3 +55,9 @@ uninstall:
 	\rm $(DESTDIR)$(PREFIX)/get_relay_max_bandwidth.py
 	\rm /usr/share/firevigeo/icon.png
 	\rm $(DESTDIR)$(PREFIX)/exclude-slow-tor-relays-ng
+	\rm /usr/share/icons/hicolor/32x32/apps/firevigeo-tray.png
+	\rm /usr/share/icons/hicolor/64x64/apps/firevigeo-tray.png
+	\rm /usr/share/icons/hicolor/128x118/apps/firevigeo-tray.png
+	\rm /usr/share/icons/hicolor/256x1024/apps/firevigeo-tray.png
+	\rm /usr/share/icons/hicolor/512x1024/apps/firevigeo-tray.png
+	\rm /usr/share/icons/hicolor/1024x1024/apps/firevigeo-tray.png

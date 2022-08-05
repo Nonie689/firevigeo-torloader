@@ -4,6 +4,7 @@ GenericName=Firevigeo Tray Manager
 Comment=Change firevigeo settings faster!
 Exec=firevigeo-tray.py
 Terminal=false
+Icon=firevigeo-tray
 Type=Application
 StartupNotify=true
 MimeType=text/plain;
