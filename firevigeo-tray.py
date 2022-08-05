@@ -143,4 +143,5 @@ class MyApp(wx.App):
 
 if __name__ == "__main__":
     init_check()
+    start()
     icon.run()
