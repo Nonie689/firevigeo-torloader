@@ -327,9 +327,9 @@ start_tor_servers() {
       sleep 5
       fi
         if $(which exclude-slow-tor-relays-ng &> /dev/null) ; then
-          exclude-slow-tor-relays-ng -d "/var/lib/tor.$start/" -i "$_torrc_config.$number" -b 10000
+          exclude-slow-tor-relays-ng -d "/var/lib/tor.$start/" -i "$_torrc_config.$number" -b 6000
         else
-          ./exclude-slow-tor-relays-ng -d "/var/lib/tor.$start/" -i "$_torrc_config.$number" -b 10000
+          ./exclude-slow-tor-relays-ng -d "/var/lib/tor.$start/" -i "$_torrc_config.$number" -b 6000
         fi
       echo " -- Tor $counter started!"
     else
