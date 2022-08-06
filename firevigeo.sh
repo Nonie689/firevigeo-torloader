@@ -318,19 +318,29 @@ start_tor_servers() {
     let counter=counter+1
     let counter_rw=counter_rw+1
     #let ip_addr=ip_addr+1
-
+    if test $counter -gt 1; then
+      if $(which exclude-slow-tor-relays-ng &> /dev/null) ; then
+        exclude-slow-tor-relays-ng -d "/var/lib/tor.$start/" -i "$_torrc_config.$number" -b 8000
+      else
+        ./exclude-slow-tor-relays-ng -d "/var/lib/tor.$start/" -i "$_torrc_config.$number" -b 8000
+      fi
+    fi
     #Start tor proxy router for virtual  network card! Then check the  execution succeed!
     tor -f $_torrc_config.$number &> /dev/null &
 
     if [ $? -eq 0 ] ; then
       if test $counter -eq 1; then
       sleep 5
-      fi
         if $(which exclude-slow-tor-relays-ng &> /dev/null) ; then
           exclude-slow-tor-relays-ng -d "/var/lib/tor.$start/" -i "$_torrc_config.$number" -b 8000
+          kill $(ps aux | grep -E "tor -f /etc/tor/torrc.$number" | grep -v "grep" | awk '{print $2}')
+          tor -f $_torrc_config.$number &> /dev/null &
         else
           ./exclude-slow-tor-relays-ng -d "/var/lib/tor.$start/" -i "$_torrc_config.$number" -b 8000
+          kill $(ps aux | grep -E "tor -f /etc/tor/torrc.$number" | grep -v "grep" | awk '{print $2}')
+          tor -f $_torrc_config.$number &> /dev/null &
         fi
+      fi
       echo " -- Tor $counter started!"
     else
       echo " -- Failed to start Tor!"
