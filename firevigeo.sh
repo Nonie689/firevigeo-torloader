@@ -4,7 +4,7 @@
 #                                                                                 #
 # firevigeo                                                                       #
 #                                                                                 #
-# version: 0.8.2                                                                  #
+# version: 0.9.2                                                                  #
 #                                                                                 #
 # A tool to start multiple tor proxys with transparent loadbalancing feature!     #
 # This tool redirect the complete traffic trough loadbalanced tor clients, with   #
@@ -49,7 +49,7 @@
 #
 # program information
 readonly prog_name="firevigeo"
-readonly version="0.9.1"
+readonly version="0.9.2"
 readonly signature="Copyright (C) 2022 Nonie689"
 readonly git_url="https://github.com/Nonie689/firevigeo-torloader"
 
