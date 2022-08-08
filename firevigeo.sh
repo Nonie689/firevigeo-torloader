@@ -334,10 +334,12 @@ start_tor_servers() {
         if $(which exclude-slow-tor-relays-ng &> /dev/null) ; then
           exclude-slow-tor-relays-ng -d "/var/lib/tor.$start/" -i "$_torrc_config.$number" -b 8000
           kill $(ps aux | grep -E "tor -f /etc/tor/torrc.$number" | grep -v "grep" | awk '{print $2}')
+          sleep 1.5
           tor -f $_torrc_config.$number &> /dev/null &
         else
           ./exclude-slow-tor-relays-ng -d "/var/lib/tor.$start/" -i "$_torrc_config.$number" -b 8000
           kill $(ps aux | grep -E "tor -f /etc/tor/torrc.$number" | grep -v "grep" | awk '{print $2}')
+          sleep 1.5
           tor -f $_torrc_config.$number &> /dev/null &
         fi
       fi
