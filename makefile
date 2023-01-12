@@ -9,8 +9,7 @@ ifeq ($(PREFIX),)
 endif
 
 all:
-	\shc -S -f firevigeo.sh -o firevigeo
-
+	\shc -USf firevigeo.sh -v -o firevigeo
 clean :
 	\rm *.x.c
 

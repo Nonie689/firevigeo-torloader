@@ -1,0 +1,64 @@
+##############################################
+###### BASIC USEFULL IPTABLE COMMANDS!! ######
+### To see all currently used iptable rules ##
+## sudo iptables -L -n -v                   ##
+##                                          ##
+## with more detailed view                  ##
+## sudo sudo iptables-save                  ##
+##                                          ############################################
+### To flush and remove all used iptables rules that are loadet
+# Accept all traffic first to avoid ssh lockdown  via iptables firewall rules #
+## iptables -P INPUT ACCEPT
+## iptables -P FORWARD ACCEPT
+## iptables -P OUTPUT ACCEPT
+### Flush All Iptables Chains/Firewall rules #
+## iptables -F
+### Delete all Iptables Chains #
+## iptables -X 
+### Flush all counters too #
+## iptables -Z 
+### Flush and delete all nat and  mangle #
+## iptables -t nat -F
+## iptables -t nat -X
+## iptables -t mangle -F
+## iptables -t mangle -X
+## iptables -t raw -F
+## iptables -t raw -X
+##
+########################################################################################
+
+*nat
+:PREROUTING ACCEPT [0:0]
+:INPUT ACCEPT [0:0]
+:OUTPUT ACCEPT [0:0]
+:POSTROUTING ACCEPT [0:0]
+:REDSOCKS - [0:0]
+:opensnitch-filter-OUTPUT - [0:0]
+-A OUTPUT -j opensnitch-filter-OUTPUT
+-A opensnitch-filter-OUTPUT -p icmp -j ACCEPT
+
+# Redirect all output through redsocks
+-A OUTPUT -p tcp -j REDSOCKS
+
+# Whitelist LANs and some other reserved addresses.
+# https://en.wikipedia.org/wiki/Reserved_IP_addresses#Reserved_IPv4_addresses
+-A REDSOCKS -d 0.0.0.0/8 -j RETURN
+-A REDSOCKS -d 10.0.0.0/8 -j RETURN
+-A REDSOCKS -d 127.0.0.0/8 -j RETURN
+-A REDSOCKS -d 169.254.0.0/16 -j RETURN
+-A REDSOCKS -d 172.16.0.0/12 -j RETURN
+-A REDSOCKS -d 192.168.0.0/16 -j RETURN
+-A REDSOCKS -d 224.0.0.0/4 -j RETURN
+-A REDSOCKS -d 240.0.0.0/4 -j RETURN
+
+# Redirect everything else to redsocks port
+-A REDSOCKS -p tcp -j REDIRECT --to-ports 31338
+
+:ufw-after-forward - [0:0]
+:ufw-after-input - [0:0]
+:ufw-after-logging-forward - [0:0]
+:ufw-after-logging-input - [0:0]
+:ufw-after-logging-output - [0:0]
+:ufw-after-output - [0:0]
+
+COMMIT
