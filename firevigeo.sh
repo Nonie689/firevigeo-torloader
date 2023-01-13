@@ -124,6 +124,7 @@ ip link set dev virth0 up  2> /dev/null
 # Enables ip forwarding in the system kernel!
 
 echo "1" > /proc/sys/net/ipv4/ip_forward
+sysctl net.ipv4.ip_forward=1
 
 # Load the iptables module in the kernel!
 modprobe ip_tables
@@ -333,7 +334,8 @@ start_tor_servers() {
 
 
    ### Run  forloop and create custom configs for conky and proxychain!
-   for number in $(seq $start $end) ; do
+   for number in $(seq $start $end)
+    do
    	newcontrolport="$(expr $number + 2500)"
     printf "Generate Tor socks: $number "
 
@@ -362,6 +364,7 @@ start_tor_servers() {
     echo "SocksPort 10.0.0.10:$number" >> $_torrc_config.$number
     echo "ControlPort $newcontrolport" >> $_torrc_config.$number
     echo "HashedControlPassword $_tor_hashpass" >> $_torrc_config.$number
+    echo "RunAsDaemon 0" >> $_torrc_config.$number
 
     # Enable only at the first tor client a DNS service!
     if test $counter -eq 0 && ! $(pidof stubby &> /dev/null) ; then
@@ -376,7 +379,7 @@ start_tor_servers() {
     #let ip_addr=ip_addr+1
 
     #Start tor proxy router for virtual  network card! Then check the  execution succeed!
-    nohup bash -c "tor -f $_torrc_config.$number &> /dev/null && python exclude-slow-tor-relays-ng -d /var/lib/tor.$number/ -i $_torrc_config.$number -b 8000 &> /dev/null" &> /dev/null &
+    nohup tor -f $_torrc_config.$number &> /dev/null &
 
     if [ $? -eq 0 ] ; then
       echoinfo "tor $counter started!"
@@ -384,11 +387,24 @@ start_tor_servers() {
       echowarn "failed to start Tor!"
     fi
 
-    sleep 0.125
-    kill -1 $(ps -aux | grep -E "tor -f $_torrc_config.$number" | grep -v "grep" | awk '{print $2}' | head -n 1)
-
     # End of loop for creating custom new settings!
  done
+
+   for number in $(seq $start $end)
+   do
+     while true
+     do
+        python $basename/exclude-slow-tor-relays-ng -d /var/lib/tor.$number/ -i $_torrc_config.$number -b 8000 &> /dev/null
+        if [ $? -eq 0 ] ; then
+          break
+        else
+          sleep 0.125
+        fi
+     done
+
+     sleep 0.125
+     kill -1 $(ps -aux | grep -E "tor -f $_torrc_config.$number" | grep -v "grep" | awk '{print $2}' | head -n 1)
+   done
 
 
    # Save conkyrc to users folder!
