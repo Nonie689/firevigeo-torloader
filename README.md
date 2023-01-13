@@ -13,3 +13,4 @@ An extra tool to add multiple tor instances with systemwide transparent loadbala
 
 	make install
 
+	and install the python requirements with: pip install -r requirements.txt
