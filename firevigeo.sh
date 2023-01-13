@@ -394,7 +394,7 @@ start_tor_servers() {
    do
      while true
      do
-        python $basename/exclude-slow-tor-relays-ng -d /var/lib/tor.$number/ -i $_torrc_config.$number -b 8000 &> /dev/null
+        python $basename/exclude-slow-tor-relays-ng -d /var/lib/tor.$number/ -i $_torrc_config.$number -b 12000 &> /dev/null
         if [ $? -eq 0 ] ; then
           break
         else
