@@ -268,6 +268,7 @@ for country_port in $(cat ${doc_dir}/country_codes.lst | awk -F"[{}]" '{print $2
     echo "SocksPort 10.0.0.10:$country_count_num" >> $_torrc_config.$country_port
     echo "ControlPort $countrycontrolport" >> $_torrc_config.$country_port
     echo "HashedControlPassword $_tor_hashpass" >> $_torrc_config.$country_port
+    echo "RunAsDaemon 1" >> $_torrc_config.$country_port
 
 
     #ip link add veth$counter type dummy  &> /dev/null
