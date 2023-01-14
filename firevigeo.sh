@@ -219,9 +219,9 @@ else
 
 
   echo
-  echoinfo "Disable Network to unload iptables.rules, to prevent IP leaks!"
+  #echoinfo "Disable Network to unload iptables.rules, to prevent IP leaks!"
   # Disable default network interface
-  ip link set dev ${default_ifname} down &> /dev/null
+  #ip link set dev ${default_ifname} down &> /dev/null
 
   fi
 
@@ -436,23 +436,24 @@ start_tor_servers() {
 
      if [ "$?" -ne 0 ] ; then
        echoerr "failed to load new custom iptables rules!"
-       echo "Default Network are still disabled!"
        echo
        exit 404
+    else
+       echoinfo "system loaded new iptables rule!"
      fi
 
 
-    ip link set dev $default_ifname up 1> /dev/null
-    ip addr add $default_ip_addr brd + dev ${default_ifname} 1> /dev/null
+    #ip link set dev $default_ifname up 1> /dev/null
+    #ip addr add $default_ip_addr brd + dev ${default_ifname} 1> /dev/null
 
-     while true
-     do
-        sleep 0.5
-        if test $(sudo sudo iptables-save | wc -l) -gt 24; then
-          echoinfo "iptables Loading done! -- System is now complete proxyfing traffic by loadbalancer!"
-          break
-        fi
-     done
+     #while true
+     #do
+     #   sleep 0.5
+     #   if test $(sudo sudo iptables-save | wc -l) -gt 24; then
+     #     echoinfo "iptables Loading done! -- System is now complete proxyfing traffic by loadbalancer!"
+     #     break
+     #   fi
+     #done
 
   echoinfo "Change DNS service to use 127.0.0.1!"
   echo "nameserver 127.0.0.1" > /etc/resolv.conf
@@ -563,9 +564,9 @@ own_params() {
         echo "Change DNS service to use Google DNS service!"
         echo "nameserver 8.8.8.8" > /etc/resolv.conf
         echo
-        echo "Set default network device UP!"
-        ip link set dev $default_ifname up 1> /dev/null
-        echo
+        #echo "Set default network device UP!"
+        #ip link set dev $default_ifname up 1> /dev/null
+        #echo
         echo "Done!"
         shift ;;
 
