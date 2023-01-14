@@ -175,7 +175,7 @@ not_there=false
 
 ## Test missing runtime dependencies!!
 
-python -c "import stem" &> /dev/null || echoerr "python stem not found! - Please install it!" || not_there=true
+python -c "import stem" &> /dev/null || bash -c "echoerr 'python stem not found! - Please install it!' && not_there=true"
 
 if ! which tor &> /dev/null ; then
   echoerr "tor not found! - Please install it!"
