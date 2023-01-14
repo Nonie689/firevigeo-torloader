@@ -108,14 +108,20 @@ _init_random="$(shuf -i 10000-1000000 -n1)"
 _tor_pass_readable="${_cdate}${_init_random}"
 _tor_hashpass="$(tor --hash-password $_tor_pass_readable| tail -1)"
 
+
+min_speed=18000
+count=0
+
 # Variables related to the log file. Divided into three parts due
 # to the better possibility of manipulation for the user.
+
 readonly _log_directory="/var/log"
 _log_file="firevigeo.${_cdate}.log"
 readonly _log_stdout="${_log_directory}/firevigeo.stdout.log"
 _log_path="${_log_directory}/${_log_file}"
 
 # Create virtual dummy network
+
 modprobe dummy    # load dummy network module!
 ip link add virt0 type dummy  2> /dev/null
 ip addr add 10.0.0.10/24 brd + dev virt0 label virt0:0  2> /dev/null
@@ -123,14 +129,13 @@ ip link set dev virth0 up  2> /dev/null
 
 # Enables ip forwarding in the system kernel!
 
-echo "1" > /proc/sys/net/ipv4/ip_forward
-sysctl net.ipv4.ip_forward=1
+echo "1" > /proc/sys/net/ipv4/ip_forward &> /dev/null
+sysctl net.ipv4.ip_forward=1 &> /dev/null
 
 # Load the iptables module in the kernel!
 modprobe ip_tables
 
-# Enable connection tracking!
-# (connection status is taken into account)
+# Enable connection tracking! -- [connection status is taken into account]
 modprobe ip_conntrack
 
 # Additional functions for IRC!
@@ -139,6 +144,10 @@ modprobe ip_conntrack_irc
 # Additional info for FTP!
 modprobe ip_conntrack_ftp
 
+
+###############################################
+## Declare programm functions programm area ##
+#############################################
 
 ## Display program version
 print_version() {
@@ -158,6 +167,27 @@ check_root() {
     fi
 }
 
+exclude_tor_relay() {
+  # Set parameter variable!
+  parameter=$1
+
+  # Store command output results to variable!!
+  output_1=$(
+  
+  while true
+    do
+    python $basename/exclude-slow-tor-relays-ng -d /var/lib/tor.$parameter/ -i $_torrc_config.$parameter -b $min_speed 2> /dev/null | grep -vE 'Could not find or read consensus file.' && break || sleep 1.25
+       done
+   )
+   
+   # Sleep a moment and reload torrc config
+   sleep 0.25
+     
+   kill -1 $(ps -aux | grep -E "tor -f $_torrc_config.$parameter" | grep -v 'grep' | awk '{print $2}' | head -n 1)
+      
+}
+
+# Print echo functions!!
 echoerr() { echo -e "$red[Error] $reset** $@" 1>&2; }
 echowarn() { echo -e  "$yellow[Warn] $reset** $@" 1>&2; }
 echoinfo() { echo -e "$cyan[Info] $reset** $@"; }
@@ -239,12 +269,12 @@ generate_random(){
 function __main__() {
   ###  Here is the main construct of this tool!
 
-
   # Show programm info!
 
   print_version
-  own_params "${@}"
 
+  # Use parameters!
+  own_params "${@}"
 }
 
 function get_date_time() {
@@ -396,23 +426,34 @@ start_tor_servers() {
     # End of loop for creating custom new settings!
  done
 
+
+   # Exclude slow relays and reloard torrc config!
+   echo
+   echo
+   echoinfo "Excluding slow tor relays!!"
+   echo
+
    for number in $(seq $start $end)
    do
-     while true
-     do
-        python $basename/exclude-slow-tor-relays-ng -d /var/lib/tor.$number/ -i $_torrc_config.$number -b 12000 &> /dev/null
-        if [ $? -eq 0 ] ; then
-          break
-        else
-          sleep 0.125
-        fi
-     done
-
-     sleep 0.125
-     kill -1 $(ps -aux | grep -E "tor -f $_torrc_config.$number" | grep -v "grep" | awk '{print $2}' | head -n 1)
+     exclude_tor_relay $number &
    done
 
+   
+   # Waiting for that all slow relay excluding jobs are finised!
+   
+   sleep 2.5
+   
+   while true
+   do
+     sleep 0.125
+     ps -aux | grep -e "exclude-slow-tor-relays-ng" | grep -v grep &> /dev/null && continue
+     break
+   done
 
+   echo
+   echo Completed updating of relays to relays faster then $min_speed!
+   echo
+   
    # Save conkyrc to users folder!
    UHOME="/home"
    # get list of all users
@@ -473,16 +514,25 @@ start_tor_servers() {
   echo
 
   pidof redsocks &> /dev/null && echo "Redsocks daemon already running!" || echowarn "Redsocks daemon isn't running!\n Starting redsocks daemon!\mPlease start redsocks!"
-  (pidof go-dispatch-proxy &> /dev/null && ps -aux | grep -E "go-dispatch-proxy -lport 4711 -tunnel $ip_addr_list") &> /dev/null && echoinfo "go-dispatch-proxy loadbalancer is running correctly!" ||  echowarn "go-dispatch-proxy loadbalacer uses not the correct tunnel proxys! \n\nPlease fix it!\nYou should run: kill \$(pidof go-dispatch-proxy)\nYou start the loadbalancer with: go-dispatch-proxy -lport 4711 -tunnel $ip_addr_list"
+  (pidof go-dispatch-proxy &> /dev/null && ps -aux | grep -E "go-dispatch-proxy -lport 4711 -tunnel $ip_addr_list") &> /dev/null && echo && echo && echoinfo "go-dispatch-proxy loadbalancer is running correctly!" ||  echowarn "go-dispatch-proxy loadbalacer uses not the correct tunnel proxys! \n\nPlease fix it!" 
+  
+  echo
+  echo
+  echo You should run: killall go-dispatch-proxy
+  echo
+  echo You start the loadbalancer with: 
+  echo "   go-dispatch-proxy -lport 4711 -tunnel $ip_addr_list"
+  echo
+  echo
 
-  start_tor_servers_by_country
+  #start_tor_servers_by_country
   exit 0
 }
 
 
 reset_iptables() {
   while true ; do
-     if test $(sudo iptables-save | wc -l) -gt 27 ; then
+     if ! test $(sudo iptables-save | wc -l) -lt 29 ; then
         iptables -F
         iptables -X
         iptables -t nat -F
@@ -528,7 +578,7 @@ echo -e "   -s|--start    #Start_Port #End_Port    Start firevigeo Tor-Proxys [o
 
 
 own_params() {
-    start=10000
+    start=10001
     end=10020
     if ! test -z $2; then
       start=${2}
@@ -585,7 +635,7 @@ own_params() {
         fail=false
         if [[ $(ps aux | grep -E "tor -f /etc/tor/torrc." | grep -v "grep"| wc -l) -gt 0 ]]; then
           echoinfo "found $(ps aux | grep -E 'tor -f /etc/tor/torrc.' | grep -v 'grep'| wc -l) running tor clients!"
-          if [[ $(ps aux | grep -E "redsocks" | grep -v "grep"| wc -l) -gt 0 ]]; then
+          if [[ $(ps aux | grep -E "redsocks" | grep -v "grep"	| wc -l) -gt 0 ]]; then
             echoinfo "redsocks runs!"
           else
             echowarn "redsocks not running!"
