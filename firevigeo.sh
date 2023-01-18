@@ -532,7 +532,7 @@ start_tor_servers() {
 
 reset_iptables() {
   while true ; do
-     if ! test $(sudo iptables-save | wc -l) -lt 29 ; then
+     if $(sudo iptables-save | grep 31338 &> /dev/null); then
         iptables -F
         iptables -X
         iptables -t nat -F
