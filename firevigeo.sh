@@ -120,30 +120,6 @@ _log_file="firevigeo.${_cdate}.log"
 readonly _log_stdout="${_log_directory}/firevigeo.stdout.log"
 _log_path="${_log_directory}/${_log_file}"
 
-# Create virtual dummy network
-
-modprobe dummy    # load dummy network module!
-ip link add virt0 type dummy  2> /dev/null
-ip addr add 10.0.0.10/24 brd + dev virt0 label virt0:0  2> /dev/null
-ip link set dev virth0 up  2> /dev/null
-
-# Enables ip forwarding in the system kernel!
-
-echo "1" > /proc/sys/net/ipv4/ip_forward &> /dev/null
-sysctl net.ipv4.ip_forward=1 &> /dev/null
-
-# Load the iptables module in the kernel!
-modprobe ip_tables
-
-# Enable connection tracking! -- [connection status is taken into account]
-modprobe ip_conntrack
-
-# Additional functions for IRC!
-modprobe ip_conntrack_irc
-
-# Additional info for FTP!
-modprobe ip_conntrack_ftp
-
 
 ###############################################
 ## Declare programm functions programm area ##
@@ -240,7 +216,7 @@ if $not_there ; then
 else
   # get current used network values and save them
 
-  default_ifname="$(ip link | grep DEFAULT | grep -v lo | head -1 | awk -F ':' '{print $2}')"
+  default_ifname="$(route | grep default | awk '{print $8}')"
   if test $(echo "$default_ifname" | wc -l) -eq 0
   then
     echoerr "no default network interface selected!"
@@ -259,6 +235,29 @@ else
   #ip link set dev ${default_ifname} down &> /dev/null
 
   fi
+  
+  # Create virtual dummy network
+  modprobe dummy    # load dummy network module!
+  ip link add virt0 type dummy  2> /dev/null
+  ip addr add 10.0.0.10/24 brd + dev virt0 label virt0:0  2> /dev/null
+  ip link set dev virth0 up  2> /dev/null
+  
+  # Enables ip forwarding in the system kernel!
+  
+  echo "1" > /proc/sys/net/ipv4/ip_forward &> /dev/null
+  sysctl net.ipv4.ip_forward=1 &> /dev/null
+  
+  # Load the iptables module in the kernel!
+  modprobe ip_tables
+  
+  # Enable connection tracking! -- [connection status is taken into account]
+  modprobe ip_conntrack
+  
+  # Additional functions for IRC!
+  modprobe ip_conntrack_irc
+  
+  # Additional info for FTP!
+  modprobe ip_conntrack_ftp
 
 }
 
@@ -476,6 +475,7 @@ start_tor_servers() {
 
      # Save iptables.rule to system settings folder!
      cp $basename/data/config/redsocks.rules /etc/iptables/redsocks-go-balanced.rules &> /dev/null
+     cp $basename/data/config/redsocks.conf /etc/redsocks.conf
 
      # Load redsocks-go-balanced iptables rules
      echoinfo "Loading new custom iptables rules!"
@@ -514,14 +514,14 @@ start_tor_servers() {
   echo
 
   pidof redsocks &> /dev/null && echo "Redsocks daemon already running!" || echowarn "Redsocks daemon isn't running!\n Starting redsocks daemon!\mPlease start redsocks!"
-  (pidof go-dispatch-proxy &> /dev/null && ps -aux | grep -E "go-dispatch-proxy -lport 4711 -tunnel $ip_addr_list") &> /dev/null && echo && echo && echoinfo "go-dispatch-proxy loadbalancer is running correctly!" ||  echowarn "go-dispatch-proxy loadbalacer uses not the correct tunnel proxys! \n\nPlease fix it!" 
+  (pidof go-dispatch-proxy &> /dev/null && ps -aux | grep -E "go-dispatch-proxy -lhost 10.0.0.10 -lport 4711 -tunnel $ip_addr_list") &> /dev/null && echo && echo && echoinfo "go-dispatch-proxy loadbalancer is running correctly!" ||  echowarn "go-dispatch-proxy loadbalacer uses not the correct tunnel proxys! \n\nPlease fix it!" 
   
   echo
   echo
   echo You should run: killall go-dispatch-proxy
   echo
   echo You start the loadbalancer with: 
-  echo "   go-dispatch-proxy -lport 4711 -tunnel $ip_addr_list"
+  echo "   go-dispatch-proxy -lhost 10.0.0.10 -lport 4711 -tunnel $ip_addr_list"
   echo
   echo
 
