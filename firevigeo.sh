@@ -382,8 +382,8 @@ start_tor_servers() {
     echo \${goto 12}\${voffset 0}\${font Ubuntu:style=Bold:size=8}Tor $counter_rw IP: \${alignr}\${color2}\${execp proxychains -q -f $_proxychain_config.$counter_rw.conf 'curl -s https://myip.privex.io/index.json| jq  -r .ip' }\${color} >> /etc/conky/cpu-colors-edit/.conkyrc
 
     # Create modified torrc config for every tor proxy on $_torrc_config.$number!!
-    echo "ExcludeNodes {es},{us},{ca},{de},{li},{at},{gb},{la},{au},{nz},{dk},{fr},{nl},{lt},{ng},{nf},{ma},{cz},{fi},{et},{so},{sv},{be},{by},{be},{ly},{it},{uk},{se},{um},{ru},{cn},{uy},{uz},{zw},{sk},{sz},{tz},{tv},{ug},{kr},{sy},{tr},{kg},{kz},{ua},{uz},{ph},{pl},{pt},{sm},{ly},{??} StrictNodes 1" > $_torrc_config.$number
-    echo "ExitNodes {jp},{eg}.{kp},{kr},{br},{ar},{cl},{co},{mx},{??} StrictNodes 1" >> $_torrc_config.$number
+    echo "ExcludeNodes {es},{us},{ca},{de},{li},{at},{gb},{la},{au},{nz},{dk},{fr},{nl},{lt},{ng},{nf},{ma},{cz},{fi},{et},{so},{sv},{be},{by},{be},{ly},{it},{se},{ru},{cn},{uy},{uz},{zw},{sk},{sz},{tz},{tv},{ug},{kr},{sy},{tr},{kg},{kz},{ua},{uz},{ph},{pl},{pt},{sm},{ly},{??} StrictNodes 1" > $_torrc_config.$number
+    echo "ExitNodes {ch},{ro},{rs},{cr},{id},{my},{bg},{sk},{hu},{sg},{md},{mx},{eg},{jp},{??} StrictNodes 1" >> $_torrc_config.$number
     echo "User tor" >> $_torrc_config.$number
     echo "Sandbox 1" >> $_torrc_config.$number
     echo "HardwareAccel 1" >> $_torrc_config.$number
