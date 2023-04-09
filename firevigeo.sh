@@ -295,7 +295,7 @@ for country_port in $(cat ${doc_dir}/country_codes.lst | awk -F"[{}]" '{print $2
     #echo "ConnLimit $(ulimit -H -n)" >> $_torrc_config.$number
     echo "NewCircuitPeriod 90" >> $_torrc_config.$country_port
     mkdir /var/lib/tor.$country_port &> /dev/null
-    mount -t tmpfs tmpfs /var/lib/tor.$country_port -o size=35m &> /dev/null
+    mount -t tmpfs tmpfs /var/lib/tor.$country_port -o size=10m &> /dev/null
     #cp -rp "/var/lib/tor" "/var/lib/tor.$number" &> /dev/null
     chown tor:tor "/var/lib/tor.$country_port"
     echo "DataDirectory /var/lib/tor.$country_port" >> $_torrc_config.$country_port
@@ -611,6 +611,9 @@ own_params() {
         for tor_pid in $(ps aux | grep -E "tor -f /etc/tor/torrc.*" | grep -v "grep" | awk '{print $2}'); do
            kill $tor_pid &> /dev/null && echo Kill TOR-PID: $tor_pid
         done
+
+        umount /var/lib/tor.*
+        rm -rf /var/lib/tor.*
 
         echo Done stopped all Tor instances!
         echo
